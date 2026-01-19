@@ -1,17 +1,44 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <errno.h>
 
 #include "http/server/http_server.h"
+#include "logger/logger.h"
 
-HTTP_Status_Code route_root(QueryParameters_t *params, Request_Handler_Response_t *response, void *context)
+bool http_server_should_quit = false;
+
+typedef struct
+{
+    Logger *logger;
+} HTTP_Cool_Context;
+
+HTTP_Status_Code route_root(QueryParameters_t *params, Request_Handler_Response_t *response, void *route_context, void *registry_context)
 {   
     (void)params;
     (void)response;
-    (void)context;
+    (void)route_context;
+    HTTP_Cool_Context *cool_context = (HTTP_Cool_Context*)registry_context;
 
     response->content_type = HTTP_CONTENT_TYPE_HTML;
+    Logger_Write(cool_context->logger, "%s", "Hii");
+    // TODO: Log here?
 
     return HTTP_STATUS_CODE_NOT_FOUND;
 }
+
+void check_signal(int signal)
+{
+    printf("Got signal: %d\n", signal);
+    http_server_should_quit = true;
+}
+
+
 
 int main()
 {
@@ -19,28 +46,87 @@ int main()
     uint16_t port = 8080;
     size_t max_connections = 1024;
 
-    HTTP_Server http_server;
+    Logger logger_main = {0};
+    Logger_Init(&logger_main, "Main", LOGGER_OUTPUT_TYPE_FILE_JSON);
+    Logger_Write(&logger_main, "%s", "Hello");
 
-    if(HTTP_Server_Initialize(&http_server, max_connections) == false)
+    pid_t http_server_pid;
+    http_server_pid = fork();
+    if(http_server_pid > 0)
     {
-        printf("Server failed to initialize\n");
-        return -1;
-    }
-    /* Register valid routes */
-    HTTP_Server_Register_Route(&http_server, "/", HTTP_METHOD_GET, route_root);
+        // Parent-case        
+        Logger logger = {0};    
 
-    if(HTTP_Server_Start(&http_server, port) == false)
+        Logger_Init(&logger, "Parent", LOGGER_OUTPUT_TYPE_FILE_JSON);
+        Logger_Write(&logger, "%s", "Hello");
+
+        char buffer[32] = {0};
+        bool should_quit = false;
+        while(should_quit == false)
+        {
+            fgets(buffer, sizeof(buffer), stdin);
+            if(strncmp(buffer, "q", 1) == 0)
+            {
+                if(kill(http_server_pid, SIGTERM) == -1)
+                {
+                    Logger_Write(&logger, "Error: Did not correctly kill the process: %d", errno);
+                    return -4;
+                }              
+
+                int stat_loc;
+                waitpid(http_server_pid, &stat_loc, 0);
+                printf("stat loc: %d\n", stat_loc);
+
+                should_quit = true;
+            } 
+        }
+        Logger_Write(&logger, "Goodbye, process done.");
+    }
+    else if(http_server_pid == 0)
     {
-        printf("Server failed to start\n");
-        return -2;
-    }
+        // Child-case
+        Logger logger = {0};    
 
-    while(1)
+        Logger_Init(&logger, "Child", LOGGER_OUTPUT_TYPE_FILE_JSON);
+        Logger_Write(&logger, "%s", "Hello");
+        
+        signal(SIGQUIT, check_signal);
+        signal(SIGTERM, check_signal);
+        signal(SIGKILL, check_signal);
+
+        HTTP_Server http_server;
+
+        HTTP_Cool_Context cool_context;
+        cool_context.logger = &logger;
+        if(HTTP_Server_Initialize(&http_server, max_connections, &cool_context) == false)
+        {
+            Logger_Write(&logger, "Server failed to initialize");
+            return -1;
+        }
+
+        /* Register valid routes */
+        HTTP_Server_Register_Route(&http_server, "/", HTTP_METHOD_GET, route_root);
+
+        if(HTTP_Server_Start(&http_server, port) == false)
+        {
+            Logger_Write(&logger, "Server failed to start");
+            return -2;
+        }
+
+        while(http_server_should_quit == false)
+        {
+            HTTP_Server_Work(&http_server);
+        }
+
+        Logger_Write(&logger, "Disposing HTTP Server");
+        HTTP_Server_Dispose(&http_server);
+    }
+    else
     {
-        HTTP_Server_Work(&http_server);
+        // TODO:
+        // Error: negative value of pid
+        // Check errno
     }
 
-    HTTP_Server_Dispose(&http_server);    
-    
     return 0;
 }
