@@ -58,3 +58,6 @@ dkms.conf
 /build/
 /bin/
 /obj/
+
+# IDE files
+.vscode/
