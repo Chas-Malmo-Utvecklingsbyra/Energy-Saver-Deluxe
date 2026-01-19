@@ -26,8 +26,8 @@ int main()
         printf("Server failed to initialize\n");
         return -1;
     }
-
-    HTTP_Server_Register_Route(&http_server, "/", route_root);
+    /* Register valid routes */
+    HTTP_Server_Register_Route(&http_server, "/", HTTP_METHOD_GET, route_root);
 
     if(HTTP_Server_Start(&http_server, port) == false)
     {
