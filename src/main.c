@@ -10,6 +10,7 @@
 
 #include "http/server/http_server.h"
 #include "logger/logger.h"
+#include "routes/root_handler.h"
 
 bool http_server_should_quit = false;
 
@@ -18,27 +19,11 @@ typedef struct
     Logger *logger;
 } HTTP_Cool_Context;
 
-HTTP_Status_Code route_root(QueryParameters_t *params, Request_Handler_Response_t *response, void *route_context, void *registry_context)
-{   
-    (void)params;
-    (void)response;
-    (void)route_context;
-    HTTP_Cool_Context *cool_context = (HTTP_Cool_Context*)registry_context;
-
-    response->content_type = HTTP_CONTENT_TYPE_HTML;
-    Logger_Write(cool_context->logger, "%s", "Hii");
-    // TODO: Log here?
-
-    return HTTP_STATUS_CODE_NOT_FOUND;
-}
-
 void check_signal(int signal)
 {
     printf("Got signal: %d\n", signal);
     http_server_should_quit = true;
 }
-
-
 
 int main()
 {
@@ -105,7 +90,7 @@ int main()
         }
 
         /* Register valid routes */
-        HTTP_Server_Register_Route(&http_server, "/", HTTP_METHOD_GET, route_root);
+        HTTP_Server_Register_Route(&http_server, "/", HTTP_METHOD_GET, root_handler_handle);
 
         if(HTTP_Server_Start(&http_server, port) == false)
         {
