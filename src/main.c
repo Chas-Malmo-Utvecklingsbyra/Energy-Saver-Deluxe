@@ -11,6 +11,7 @@
 #include "http/server/http_server.h"
 #include "logger/logger.h"
 #include "routes/root_handler.h"
+#include "cli/cli.h"
 
 bool http_server_should_quit = false;
 
@@ -25,10 +26,31 @@ void check_signal(int signal)
     http_server_should_quit = true;
 }
 
-int main()
+void port_callback(void)
 {
-    printf("Hello, Energy Saver Deluxe!\n");
+    printf("Hello from callback!\n");
+}
+
+int main(int argc, char **argv)
+{
+    CLI cli;
     uint16_t port = 8080;
+
+    int port_argument_data = 0;
+    CLI_Argument_Add(&cli, "--port", "-p", Argument_Option_Has_Argument, &port_argument_data);
+
+    if (CLI_Parse(&cli, argc, argv))
+    {
+        if (port_argument_data != 0)
+            port = port_argument_data;
+    }
+    else
+    {
+        printf("Failed to parse CLI arguments!\n");
+        return -1;
+    }
+
+    printf("Hello, Energy Saver Deluxe!\n");
     size_t max_connections = 1024;
 
     Logger logger_main = {0};
