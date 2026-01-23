@@ -26,9 +26,10 @@ void check_signal(int signal)
     http_server_should_quit = true;
 }
 
-void port_callback(void)
+void help_callback(void)
 {
-    printf("Hello from callback!\n");
+    printf("Current arguments:\n--port(-h) <integer>\n--help(-h) for information\n");
+    exit(0);
 }
 
 int main(int argc, char **argv)
@@ -38,6 +39,7 @@ int main(int argc, char **argv)
 
     int port_argument_data = 0;
     CLI_Argument_Add(&cli, "--port", "-p", Argument_Option_Has_Argument, &port_argument_data);
+    CLI_Argument_Non_Add(&cli, "--help", "-h", help_callback);
 
     if (CLI_Parse(&cli, argc, argv))
     {
