@@ -28,7 +28,7 @@ void check_signal(int signal)
 
 void help_callback(void)
 {
-    printf("Current arguments:\n--port(-h) <integer>\n--help(-h) for information\n");
+    printf("Current arguments:\n--port(-h) <integer>\n--help(-h) for information\n--test(t) <string> to print self out\n");
     exit(0);
 }
 
@@ -38,13 +38,20 @@ int main(int argc, char **argv)
     uint16_t port = 8080;
 
     int port_argument_data = 0;
-    CLI_Argument_Add(&cli, "--port", "-p", Argument_Option_Has_Argument, &port_argument_data);
-    CLI_Argument_Non_Add(&cli, "--help", "-h", help_callback);
+    char test_string[128];
+    memset(test_string, 0, sizeof(test_string));
+
+    CLI_Argument_Add(&cli, "--port", "-p", Argument_Option_Integer, &port_argument_data);
+    CLI_Argument_Add(&cli, "--test", "-t", Argument_Option_String, test_string);
+    CLI_Argument_Add_Callback(&cli, "--help", "-h", help_callback);
 
     if (CLI_Parse(&cli, argc, argv))
     {
         if (port_argument_data != 0)
             port = port_argument_data;
+
+        if (test_string[0] != 0)
+            printf("TEST STRING IS: %s\n", test_string);
     }
     else
     {
