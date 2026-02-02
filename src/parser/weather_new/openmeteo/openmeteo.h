@@ -23,4 +23,6 @@ void OpenMeteo_Destroy(OpenMeteo_Data *data);
 
 void OpenMeteo_Print_Item(OpenMeteo_Data *data, int index);
 
+void OpenMeteo_Print_Quarter(OpenMeteo_Quarter* quarter);
+
 #endif
