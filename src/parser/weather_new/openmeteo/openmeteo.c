@@ -87,6 +87,11 @@ void OpenMeteo_Print_Item(OpenMeteo_Data *data, int index)
 
     OpenMeteo_Quarter* quarter = &data->quarters[index];
 
+    OpenMeteo_Print_Quarter(quarter);
+}
+
+void OpenMeteo_Print_Quarter(OpenMeteo_Quarter* quarter)
+{
     printf("Time: %s | Direct_Rad: %f | Diffuse: %f | Direct_Norm: %f | Temp_2m: %f | Weather_Code: %d\n", 
         quarter->time, quarter->direct_radiation, quarter->diffuse_radiation, quarter->direct_normal_irradiance, quarter->temperature_2m, quarter->weather_code
     );
