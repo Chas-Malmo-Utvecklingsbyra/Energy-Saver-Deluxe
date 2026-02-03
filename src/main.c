@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     size_t max_connections = 1024;
 
     Logger logger_main = {0};
-    Logger_Init(&logger_main, "Main", LOGGER_OUTPUT_TYPE_FILE_JSON);
+    Logger_Init(&logger_main, "Main", "logfolder", LOGGER_OUTPUT_TYPE_FILE_TEXT);
     Logger_Write(&logger_main, "%s", "Hello");
 
     pid_t http_server_pid;
@@ -71,9 +71,9 @@ int main(int argc, char **argv)
     if(http_server_pid > 0)
     {
         // Parent-case        
-        Logger logger = {0};    
+        Logger logger = {0};
 
-        Logger_Init(&logger, "Parent", LOGGER_OUTPUT_TYPE_FILE_JSON);
+        Logger_Init(&logger, "Parent", "logfolder", LOGGER_OUTPUT_TYPE_FILE_TEXT);
         Logger_Write(&logger, "%s", "Hello");
 
         char buffer[32] = {0};
@@ -97,13 +97,14 @@ int main(int argc, char **argv)
             } 
         }
         Logger_Write(&logger, "Goodbye, process done.");
+        Logger_Dispose(&logger);
     }
     else if(http_server_pid == 0)
     {
         // Child-case
         Logger logger = {0};    
 
-        Logger_Init(&logger, "Child", LOGGER_OUTPUT_TYPE_FILE_JSON);
+        Logger_Init(&logger, "Child", NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
         Logger_Write(&logger, "%s", "Hello");
         
         signal(SIGQUIT, check_signal);
@@ -135,6 +136,7 @@ int main(int argc, char **argv)
         }
 
         Logger_Write(&logger, "Disposing HTTP Server");
+        Logger_Dispose(&logger);
         HTTP_Server_Dispose(&http_server);
     }
     else
@@ -143,6 +145,6 @@ int main(int argc, char **argv)
         // Error: negative value of pid
         // Check errno
     }
-
+    Logger_Dispose(&logger_main);
     return 0;
 }
