@@ -1,9 +1,12 @@
 #ifndef OPENMETEO_H
 #define OPENMETEO_H
 
+#define _XOPEN_SOURCE
+#include <time.h>
+
 typedef struct 
 {
-    char time[17];
+    struct tm time;
     float direct_radiation;
     float diffuse_radiation;
     float direct_normal_irradiance;
@@ -14,6 +17,7 @@ typedef struct
 typedef struct
 {
     OpenMeteo_Quarter *quarters;
+    int length;
 } OpenMeteo_Data;
 
 // OpenMeteo_Data needs to be destroyed with OpenMeteo_Destroy

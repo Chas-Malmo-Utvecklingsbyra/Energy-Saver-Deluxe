@@ -1,18 +1,22 @@
 #ifndef SPOTPRICE_H
 #define SPOTPRICE_H
 
+#define _XOPEN_SOURCE
+#include <time.h>
+
 typedef struct
 {
     float SEK_per_kWh;
     float EUR_per_kWh;
     float EXR;
-    char time_start[26];
-    char time_end[26];
+    struct tm time_start;
+    struct tm time_end;
 }Spotprice_Quarter;
 
 typedef struct
 {
     Spotprice_Quarter* quarters;
+    int length;
 }Spotprice_Data;
 
 Spotprice_Data Spotprice_ConvertJSONToData(const char *file_name);

@@ -33,6 +33,8 @@ typedef struct
     Energy_Snapshot data[24 * SNAPSHOTS_PER_HOUR];
 } Energy_Report_Day;
 
+
+// buffer needs to be freed
 bool Energy_Report_Get_From_Dates(const char* weather_file_path, const char* spotprice_file_path, Date date_start, Date date_end, Energy_Report_Day* buffer, uint32_t* out_buffer_len);
 
 #endif

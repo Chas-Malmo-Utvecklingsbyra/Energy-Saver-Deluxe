@@ -25,7 +25,9 @@ OpenMeteo_Data OpenMeteo_ConvertJSONToData(const char *file_name)
     cJSON *weather_code_array = cJSON_GetObjectItem(minutely_15, "weather_code");
 
     int array_size = cJSON_GetArraySize(time_array);
+
     OpenMeteo_Data data = {0};
+    data.length = array_size;
 
     data.quarters = (OpenMeteo_Quarter*)malloc(sizeof(OpenMeteo_Quarter) * array_size);
 
@@ -56,7 +58,16 @@ OpenMeteo_Data OpenMeteo_ConvertJSONToData(const char *file_name)
             break;
 
         OpenMeteo_Quarter quarter = {0};
-        strncpy(quarter.time, cJSON_GetStringValue(time_item), sizeof(quarter.time));
+
+        memset(&quarter.time, 0, sizeof(struct tm));
+
+        // 2026-02-06T00:00
+        if (strptime(cJSON_GetStringValue(time_item), "%Y-%m-%dT%H:%M", &quarter.time) == NULL)
+        {
+            printf("Failed to parse Time in OpenMeteo\n");
+        }
+        //strncpy(quarter.time., cJSON_GetStringValue(time_item), sizeof(quarter.time));
+
         quarter.direct_radiation = (float)cJSON_GetNumberValue(direct_radiation_item);
         quarter.diffuse_radiation = (float)cJSON_GetNumberValue(diffuse_radiation_item);
         quarter.direct_normal_irradiance = (float)cJSON_GetNumberValue(direct_normal_irradiance_item);
@@ -90,9 +101,21 @@ void OpenMeteo_Print_Item(OpenMeteo_Data *data, int index)
     OpenMeteo_Print_Quarter(quarter);
 }
 
+void OpenMeteo_Get_Quarter_Time_String(OpenMeteo_Quarter* quarter, char* buffer, size_t length)
+{
+    // "2026-02-06T00:00"
+    snprintf(buffer, length, "%d-%02d-%02d %02d:%02d", quarter->time.tm_year + 1900, quarter->time.tm_mon, quarter->time.tm_mday, quarter->time.tm_hour, quarter->time.tm_min);
+}   
+
 void OpenMeteo_Print_Quarter(OpenMeteo_Quarter* quarter)
 {
+    size_t length = 17;
+    char time_buffer[length];
+    memset(time_buffer, 0, length);
+
+    OpenMeteo_Get_Quarter_Time_String(quarter, time_buffer, length);
+
     printf("Time: %s | Direct_Rad: %f | Diffuse: %f | Direct_Norm: %f | Temp_2m: %f | Weather_Code: %d\n", 
-        quarter->time, quarter->direct_radiation, quarter->diffuse_radiation, quarter->direct_normal_irradiance, quarter->temperature_2m, quarter->weather_code
+        time_buffer, quarter->direct_radiation, quarter->diffuse_radiation, quarter->direct_normal_irradiance, quarter->temperature_2m, quarter->weather_code
     );
 }
