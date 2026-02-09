@@ -5,78 +5,29 @@
 #include <string.h>
 
 #include "json/fileHelper/fileHelper.h"
-
+#include "elprisetjustnu/elprisetjustnu.h"
 
 
 Spotprice_Data Spotprice_ConvertJSONToData(const char *file_name)
 {
-    cJSON *root = json_read_from_file(file_name);
-
-    if (root == NULL)
-    {
-        printf("[SPOTPRICE_COVNERTJSONTODATA] JSON failed to Parse\n");
-    }
-
-    int array_size = cJSON_GetArraySize(root);
+    Elprisetjustnu_Data elprisetjustnu_data = Elprisetjustnu_ConvertJSONToData(file_name);
+    
     Spotprice_Data data = {0};
-    data.length = array_size;
 
-    data.quarters = (Spotprice_Quarter*)malloc(sizeof(Spotprice_Quarter) * array_size);
+    data.quarters = (Spotprice_Quarter*)malloc(sizeof(Spotprice_Quarter) * elprisetjustnu_data.length);
 
-    for (int i = 0; i < array_size; i++)
+    data.length = elprisetjustnu_data.length;
+
+    for (int i = 0; i < data.length; i++)
     {
-        cJSON *object = cJSON_GetArrayItem(root, i);
-        if (object == NULL)
-            break;
-
-        cJSON *SEK_per_kWh = cJSON_GetObjectItem(object, "SEK_per_kWh");
-        if (SEK_per_kWh == NULL)
-            break;
-        
-        cJSON *EUR_per_kWh = cJSON_GetObjectItem(object, "EUR_per_kWh");
-        if (EUR_per_kWh == NULL)
-            break;
-
-        cJSON *EXR = cJSON_GetObjectItem(object, "EXR");
-        if (EXR == NULL)
-            break;
-
-        cJSON *time_start = cJSON_GetObjectItem(object, "time_start");
-        if (time_start == NULL)
-            break;
-
-        cJSON *time_end = cJSON_GetObjectItem(object, "time_end");
-        if (time_end == NULL)
-            break;
-
-
-        Spotprice_Quarter quarter = {0};
-        quarter.SEK_per_kWh = (float)cJSON_GetNumberValue(SEK_per_kWh);
-        quarter.EUR_per_kWh = (float)cJSON_GetNumberValue(EUR_per_kWh);
-        quarter.EXR = (float)cJSON_GetNumberValue(EXR);
-
-
-        memset(&quarter.time_start, 0, sizeof(struct tm));
-        memset(&quarter.time_end, 0, sizeof(struct tm));
-
-        //"time_start": "2026-02-01T00:30:00+01:00",
-        // 2026-02-06T00:00
-
-        // Ignoring Time Zones!
-        if (strptime(cJSON_GetStringValue(time_start), "%Y-%m-%dT%H:%M", &quarter.time_start) == NULL)
-        {
-            printf("Failed to parse time_start in SpotPrice\n");
-        }
-
-        if (strptime(cJSON_GetStringValue(time_end), "%Y-%m-%dT%H:%M", &quarter.time_end) == NULL)
-        {
-            printf("Failed to parse time_end in SpotPrice\n");
-        }
-
-        data.quarters[i] = quarter;
+        data.quarters[i].EUR_per_kWh = elprisetjustnu_data.quarters[i].EUR_per_kWh;
+        data.quarters[i].EXR = elprisetjustnu_data.quarters[i].EXR;
+        data.quarters[i].SEK_per_kWh = elprisetjustnu_data.quarters[i].SEK_per_kWh;
+        data.quarters[i].time_end = elprisetjustnu_data.quarters[i].time_end;
+        data.quarters[i].time_start = elprisetjustnu_data.quarters[i].time_start;
     }
-
-    cJSON_Delete(root);
+    
+    Elprisetjustnu_Destroy(&elprisetjustnu_data);
 
     return data;
 }
