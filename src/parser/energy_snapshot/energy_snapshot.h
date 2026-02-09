@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <time.h>
+#include <stdbool.h>
 
 #define SNAPSHOTS_PER_HOUR 4
 
