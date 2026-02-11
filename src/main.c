@@ -63,7 +63,7 @@ int main(int argc, char **argv)
     size_t max_connections = 1024;
 
     Logger logger_main = {0};
-    Logger_Init(&logger_main, "Main", "logfolder", LOGGER_OUTPUT_TYPE_FILE_TEXT);
+    Logger_Init(&logger_main, "Main", "logfolder", "log.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT);
     Logger_Write(&logger_main, "%s", "Hello");
 
     pid_t http_server_pid;
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
         // Parent-case        
         Logger logger = {0};
 
-        Logger_Init(&logger, "Parent", "logfolder", LOGGER_OUTPUT_TYPE_FILE_TEXT);
+        Logger_Init(&logger, "Parent", "logfolder", "log.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT);
         Logger_Write(&logger, "%s", "Hello");
 
         char buffer[32] = {0};
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
         // Child-case
         Logger logger = {0};    
 
-        Logger_Init(&logger, "Child", NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
+        Logger_Init(&logger, "Child", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
         Logger_Write(&logger, "%s", "Hello");
         
         signal(SIGQUIT, check_signal);
