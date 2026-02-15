@@ -12,6 +12,7 @@
 #include "logger/logger.h"
 #include "routes/root_handler.h"
 #include "cli/cli.h"
+#include "energy_advisor/energy_advisor.h"
 
 bool http_server_should_quit = false;
 
@@ -36,6 +37,7 @@ int main(int argc, char **argv)
 {
     CLI cli;
     uint16_t port = 8080;
+    Energy_Status plan;
 
     int port_argument_data = 0;
     char test_string[128];
@@ -60,6 +62,7 @@ int main(int argc, char **argv)
     }
 
     printf("Hello, Energy Saver Deluxe!\n");
+    energy_advisor(&plan);
     size_t max_connections = 1024;
 
     Logger logger_main = {0};
