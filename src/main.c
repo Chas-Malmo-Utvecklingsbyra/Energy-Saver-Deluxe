@@ -50,6 +50,7 @@ int main(int argc, char **argv)
     
     printf("IS THREAD IN USE: %d\r\n", pools.threads[0].in_use);
     Thread_Pool_Task_Add(&pools, hellothere, NULL);
+    printf("Added a task\n");
     printf("IS THREAD IN USE: %d\r\n", pools.threads[0].in_use);
 
     Thread_Pool_Destroy(&pools);
