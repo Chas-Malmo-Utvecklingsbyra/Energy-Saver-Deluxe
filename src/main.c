@@ -13,6 +13,7 @@
 #include "routes/root_handler.h"
 #include "cli/cli.h"
 #include "energy_advisor/energy_advisor.h"
+#include "thread_pool/thread_pool.h"
 
 bool http_server_should_quit = false;
 
@@ -33,11 +34,32 @@ void help_callback(void)
     exit(0);
 }
 
+void *hellothere(void *ptr)
+{
+    (void)ptr;
+    printf("Hello there\n");
+    return NULL;
+}
+
+
 int main(int argc, char **argv)
 {
+    Thread_Pool pools;
+    memset(&pools, 0, sizeof(pools));
+    Thread_Pool_Create(&pools);
+    
+    printf("IS THREAD IN USE: %d\r\n", pools.threads[0].in_use);
+    Thread_Pool_Task_Add(&pools, hellothere, NULL);
+    printf("IS THREAD IN USE: %d\r\n", pools.threads[0].in_use);
+
+    Thread_Pool_Destroy(&pools);
+    printf("IS THREAD IN USE: %d\r\n", pools.threads[0].in_use);
+
+    printf("Ending the program gracefully\n");
+    return 0;
     CLI cli;
     uint16_t port = 8080;
-    Energy_Status plan;
+    Energy_Status plan; 
 
     int port_argument_data = 0;
     char test_string[128];
