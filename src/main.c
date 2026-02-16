@@ -62,7 +62,7 @@ int main(int argc, char **argv)
     }
 
     printf("Hello, Energy Saver Deluxe!\n");
-    energy_advisor(&plan);
+    Energy_Advisor_Advice(&plan);
     size_t max_connections = 1024;
 
     Logger logger_main = {0};

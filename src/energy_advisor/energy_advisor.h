@@ -6,7 +6,7 @@
 #include "../parser/energy_snapshot/energy_snapshot.h"
 #include "../parser/spotprice/spotprice.h"
 
-Energy_Status energy_advisor();
+Energy_Status Energy_Advisor_Advice();
 
 
 #endif

@@ -6,6 +6,8 @@
 #include "energy_advisor.h"
 #include "logger/logger.h"
 
+#define ENERGY_ADVISOR_WEATHER_FILE     "weather.json"
+#define ENERGY_ADVISOR_SPOTPRICE_FILE   "spotprice.json"
 
 static int compare_price(const void *a, const void *b)
 {
@@ -48,15 +50,12 @@ static const char *action_to_string(Energy_Action action)
     }
 }
 
-Energy_Status energy_advisor()
+Energy_Status Energy_Advisor_Advice()
 {
-    const char *weather_file = "weather.json";
-    const char *spotprice_file = "spotprice.json";
-
-    OpenMeteo_Data weather = OpenMeteo_ConvertJSONToData(weather_file);
-    Spotprice_Data prices = Spotprice_ConvertJSONToData(spotprice_file);
+    OpenMeteo_Data weather = OpenMeteo_ConvertJSONToData(ENERGY_ADVISOR_WEATHER_FILE);
+    Spotprice_Data prices = Spotprice_ConvertJSONToData(ENERGY_ADVISOR_SPOTPRICE_FILE);
     Logger energy_advisor_log = {0};
-    Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "energy_advice", "advice.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT);
+    Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", "Energy_Advice.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT);
 
     if(weather.length == 0 || prices.length == 0)
     {
