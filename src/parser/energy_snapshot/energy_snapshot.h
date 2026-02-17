@@ -30,11 +30,15 @@ typedef struct
 typedef struct
 {
     Date date;
-    Energy_Snapshot data[24 * SNAPSHOTS_PER_HOUR];
+    //Energy_Snapshot data[24 * SNAPSHOTS_PER_HOUR];
+    Energy_Snapshot* data;
 } Energy_Report_Day;
 
 
-// buffer needs to be freed
-bool Energy_Report_Get_From_Dates(const char* weather_file_path, const char* spotprice_file_path, Date date_start, Date date_end, Energy_Report_Day* buffer, uint32_t* out_buffer_len);
+// weather_file_path: Path to the weather file
+// spotprice_file_path: Path to spotprice file
+// Energy_Report_Bufer** buffer: NEEDS TO BE FREED
+// uint32_t quarters_to_request: AMOUNT OF QUARTERS TO GET (24 * 4 quarters is a day)
+bool Energy_Report_Get_From_Date(const char *weather_file_path, const char *spotprice_file_path, Date *date_start, uint32_t quarters_to_request, Energy_Report_Day **buffer);
 
 #endif
