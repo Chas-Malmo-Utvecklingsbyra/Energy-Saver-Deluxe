@@ -121,3 +121,17 @@ bool Energy_Report_Get_From_Date(const char *weather_file_path, const char *spot
     return true;
 }
 
+void Energy_Report_Destroy(Energy_Report_Day **report)
+{
+    if (report && *report)
+    {
+        if ((*report)->data)
+        {   
+            free((*report)->data);
+            (*report)->data = NULL;
+        }
+
+        free(*report);
+        *report = NULL;
+    }
+}

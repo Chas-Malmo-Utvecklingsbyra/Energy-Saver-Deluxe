@@ -37,8 +37,11 @@ typedef struct
 
 // weather_file_path: Path to the weather file
 // spotprice_file_path: Path to spotprice file
-// Energy_Report_Bufer** buffer: NEEDS TO BE FREED
+// Energy_Report_Bufer** buffer: NEEDS TGO BE FREED(Destroy via Destroy function)
 // uint32_t quarters_to_request: AMOUNT OF QUARTERS TO GET (24 * 4 quarters is a day)
 bool Energy_Report_Get_From_Date(const char *weather_file_path, const char *spotprice_file_path, Date *date_start, uint32_t quarters_to_request, Energy_Report_Day **buffer);
+
+
+void Energy_Report_Destroy(Energy_Report_Day **report);
 
 #endif
