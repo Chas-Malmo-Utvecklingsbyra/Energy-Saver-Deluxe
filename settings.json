@@ -1,0 +1,15 @@
+{
+  "http_server_port": 8080,
+  "exec_fetcher_on_startup": true,
+  "run_as_daemon": false,
+  "fetcher_exec_path": "/home/lukas/git/http-request-service/build/bin/program",
+  "fetchers_commands_count": 2,
+  "fetchers_commands": [
+    "/home/lukas/git/http-request-service/build/bin/program",
+    "/home/lukas/git/http-request-service/build/bin/program "
+  ],
+  "fetchers_commands_args": [
+      "-i 60 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=52.52&longitude=13.41&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o /home/lukas/git/Energy-Saver-Deluxe/data/weather/",
+      "-i 60 -u 'https://www.elprisetjustnu.se' -r '/api/v1/prices/2026/02-10_SE3.json' -o /home/lukas/git/Energy-Saver-Deluxe/data/pris/"
+    ]
+}

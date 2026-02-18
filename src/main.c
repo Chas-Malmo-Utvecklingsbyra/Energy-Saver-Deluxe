@@ -13,6 +13,7 @@
 #include "routes/root_handler.h"
 #include "cli/cli.h"
 #include "process_manager/process_manager.h"
+#include "config/config.h"
 
 bool http_server_should_quit = false;
 
@@ -33,6 +34,88 @@ void help_callback(void)
     exit(0);
 }
 
+static int parse_command_args(const char *cmd_string, char ***args_out)
+{
+    if (!cmd_string || !args_out)
+        return 0;
+
+    // Copy string since we'll modify it
+    char *str = strdup(cmd_string);
+    if (!str)
+        return 0;
+
+    // Count args first (rough estimate)
+    int max_args = 1; // Start with program name
+    for (const char *p = cmd_string; *p; p++)
+    {
+        if (*p == ' ' || *p == '\t')
+            max_args++;
+    }
+    max_args += 2; // Extra space + NULL terminator
+
+    char **args = calloc(max_args, sizeof(char *));
+    if (!args)
+    {
+        free(str);
+        return 0;
+    }
+
+    int argc = 0;
+    char *p = str;
+
+    while (*p)
+    {
+        // Skip whitespace
+        while (*p == ' ' || *p == '\t')
+            p++;
+        if (!*p)
+            break;
+
+        char *start = p;
+
+        // Handle quoted strings
+        if (*p == '\'' || *p == '"')
+        {
+            char quote = *p++;
+            start = p;
+            while (*p && *p != quote)
+                p++;
+            if (*p)
+            {
+                *p++ = '\0';
+            }
+        }
+        else
+        {
+            // Regular token
+            while (*p && *p != ' ' && *p != '\t')
+                p++;
+            if (*p)
+                *p++ = '\0';
+        }
+
+        args[argc++] = strdup(start);
+    }
+
+    args[argc] = NULL;
+    free(str);
+
+    *args_out = args;
+    return argc;
+}
+
+// Function to free the args array
+static void free_args(char **args)
+{
+    if (!args)
+        return;
+    for (int i = 0; args[i]; i++)
+    {
+        free(args[i]);
+    }
+    free(args);
+}
+
 // HTTP Server process entry point
 int http_server_process(void *context)
 {
@@ -43,7 +126,7 @@ int http_server_process(void *context)
 
     signal(SIGQUIT, check_signal);
     signal(SIGTERM, check_signal);
-
+    
     HTTP_Server http_server;
 
     if (HTTP_Server_Initialize(&http_server, 1024, cool_context) == false)
@@ -70,6 +153,7 @@ int http_server_process(void *context)
 
     return 0;
 }
+
 //TODO Test with execve to run a different binary as child process, http request service with args
 int main(int argc, char **argv)
 {
@@ -92,30 +176,64 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    Logger logger_main = {0};
-    Logger_Init(&logger_main, "Main", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
-    Logger_Write(&logger_main, "%s", "Hello");
+    Logger logger_process = {0};
+    Logger_Init(&logger_process, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
+    Logger_Write(&logger_process, "%s", "Hello");
 
     ProcessManager process_manager;
-    if (!ProcessManager_Init(&process_manager, &logger_main))
+    if (!ProcessManager_Init(&process_manager, &logger_process))
     {
-        Logger_Write(&logger_main, "Failed to initialize Process Manager");
+        Logger_Write(&logger_process, "Failed to initialize Process Manager");
         return -1;
     }
     
-    HTTP_Cool_Context cool_context = { .logger = &logger_main };
+    HTTP_Cool_Context cool_context = { .logger = &logger_process };
     pid_t server_pid = ProcessManager_Spawn(&process_manager, "HTTP Server", http_server_process, &cool_context, false);
 
     if (server_pid < 0)
     {
-        Logger_Write(&logger_main, "Failed to spawn HTTP Server process");
+        Logger_Write(&logger_process, "Failed to spawn HTTP Server process");
         return -1;
     }
     else
     {
-        Logger_Write(&logger_main, "Spawned HTTP Server process with PID %d", server_pid);
+        Logger_Write(&logger_process, "Spawned HTTP Server process with PID %d", server_pid);
     }
-        
+
+    Config_t *cfg = Config_Get_Instance("settings.json");
+    if (cfg == NULL)
+    {
+        printf("Failed to load configuration!\n");
+        exit(-1);
+    }
+
+    char *fetcher_exec_path = Config_Get_Field_Value_String(cfg, "fetcher_exec_path");
+    //size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
+
+    char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", 0);
+
+    char **args = NULL;
+    parse_command_args(cmd_args_string, &args);
+
+
+    pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, "fetchers_commands_args", fetcher_exec_path, args, false);
+
+    if (fetcher_pid < 0)
+    {
+        Logger_Write(&logger_process, "Failed to spawn fetcher process");
+        return -1;
+    }
+    else
+    {
+        Logger_Write(&logger_process, "Spawned fetcher process with PID %d", fetcher_pid);
+    }
+
+    free_args(args);
+
+     if (fetcher_pid < 0)
+        Logger_Write(&logger_process, "Failed to spawn fetcher process");
+    
+    
     return 0;
 }
     //pid_t http_server_pid;
