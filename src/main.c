@@ -16,6 +16,7 @@
 #include "config/config.h"
 
 bool http_server_should_quit = false;
+bool process_manager_should_quit = false;
 
 typedef struct
 {
@@ -26,6 +27,12 @@ void check_signal(int signal)
 {
     printf("Got signal: %d\n", signal);
     http_server_should_quit = true;
+}
+
+void process_manager_signal_handler(int signal)
+{
+    printf("Process Manager received signal: %d\n", signal);
+    process_manager_should_quit = true;
 }
 
 void help_callback(void)
@@ -154,6 +161,40 @@ int http_server_process(void *context)
     return 0;
 }
 
+// int process_manager_process(void *context)
+// {
+//     Logger logger = {0};
+//     Logger_Init(&logger, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
+//     Logger_Write(&logger, "%s", "Process Manager started");
+
+//     ProcessManager process_manager;
+//     if (!ProcessManager_Init(&process_manager, &logger))
+//     {
+//         Logger_Write(&logger, "Failed to initialize Process Manager");
+//         return -1;
+//     }
+    
+//     HTTP_Cool_Context cool_context = { .logger = &logger };
+//     pid_t server_pid = ProcessManager_Spawn(&process_manager, "HTTP Server", http_server_process, &cool_context, false);
+
+//     if (server_pid < 0)
+//     {
+//         Logger_Write(&logger, "Failed to spawn HTTP Server process");
+//         return -1;
+//     }
+//     else
+//     {
+//         Logger_Write(&logger, "Spawned HTTP Server process with PID %d", server_pid);
+//     }
+
+
+
+//     ProcessManager_Destroy(&process_manager);
+//     Logger_Dispose(&logger);
+    
+//     return 0;
+// }
+
 //TODO Test with execve to run a different binary as child process, http request service with args
 int main(int argc, char **argv)
 {
@@ -166,78 +207,127 @@ int main(int argc, char **argv)
     CLI_Argument_Add(&cli, "--test", "-t", Argument_Option_String, test_string);
     CLI_Argument_Add_Callback(&cli, "--help", "-h", help_callback);
 
-    if (CLI_Parse(&cli, argc, argv))
-    {
-
-    }
-    else
+    if (!CLI_Parse(&cli, argc, argv))
     {
         printf("Failed to parse CLI arguments!\n");
         return -1;
     }
-
-    Logger logger_process = {0};
-    Logger_Init(&logger_process, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
-    Logger_Write(&logger_process, "%s", "Hello");
-
+    
     ProcessManager process_manager;
-    if (!ProcessManager_Init(&process_manager, &logger_process))
-    {
-        Logger_Write(&logger_process, "Failed to initialize Process Manager");
-        return -1;
-    }
+    pid_t process_manager_pid;
     
-    HTTP_Cool_Context cool_context = { .logger = &logger_process };
-    pid_t server_pid = ProcessManager_Spawn(&process_manager, "HTTP Server", http_server_process, &cool_context, false);
-
-    if (server_pid < 0)
+    process_manager_pid = fork();
+    if (process_manager_pid > 0)
     {
-        Logger_Write(&logger_process, "Failed to spawn HTTP Server process");
-        return -1;
+        // Parent-case
+        char buffer[32] = {0};
+        bool should_quit = false;
+        while (should_quit == false)
+        {
+            fgets(buffer, sizeof(buffer), stdin);
+            if (strncmp(buffer, "q", 1) == 0)
+            {
+                // Send SIGTERM to child process - let child handle cleanup
+                if (kill(process_manager_pid, SIGTERM) == -1)
+                {
+                    printf("Error: Did not correctly kill the process: %d\n", errno);
+                    return -4;
+                }
+                
+                int stat_loc;
+                waitpid(process_manager_pid, &stat_loc, 0);
+                printf("stat loc: %d\n", stat_loc);
+                should_quit = true;
+            }
+        }
+        printf("Goodbye, process done.\n");
     }
-    else
+    else if (process_manager_pid == 0)
     {
-        Logger_Write(&logger_process, "Spawned HTTP Server process with PID %d", server_pid);
-    }
+        // Child-case
+        signal(SIGTERM, process_manager_signal_handler);
+        signal(SIGINT, process_manager_signal_handler);
+        
+        Logger logger_process = {0};
+        Logger_Init(&logger_process, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
+        Logger_Write(&logger_process, "%s", "Process Manager started");
 
-    Config_t *cfg = Config_Get_Instance("settings.json");
-    if (cfg == NULL)
-    {
-        printf("Failed to load configuration!\n");
-        exit(-1);
-    }
-
-    char *fetcher_exec_path = Config_Get_Field_Value_String(cfg, "fetcher_exec_path");
-    //size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
-
-    char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", 0);
-
-    char **args = NULL;
-    parse_command_args(cmd_args_string, &args);
-
-
-    pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, "fetchers_commands_args", fetcher_exec_path, args, false);
-
-    if (fetcher_pid < 0)
-    {
-        Logger_Write(&logger_process, "Failed to spawn fetcher process");
-        return -1;
-    }
-    else
-    {
-        Logger_Write(&logger_process, "Spawned fetcher process with PID %d", fetcher_pid);
-    }
-
-    free_args(args);
-
-     if (fetcher_pid < 0)
-        Logger_Write(&logger_process, "Failed to spawn fetcher process");
+        if (!ProcessManager_Init(&process_manager, &logger_process))
+        {
+            Logger_Write(&logger_process, "Failed to initialize Process Manager");
+            return -1;
+        }
     
-    
+        HTTP_Cool_Context cool_context = { .logger = &logger_process };
+        pid_t server_pid = ProcessManager_Spawn(&process_manager, "HTTP Server", http_server_process, &cool_context, false);
+
+        if (server_pid < 0)
+        {
+            Logger_Write(&logger_process, "Failed to spawn HTTP Server process");
+            return -1;
+        }
+        else
+        {
+            Logger_Write(&logger_process, "Spawned HTTP Server process with PID %d", server_pid);
+        }
+
+        Config_t *cfg = Config_Get_Instance("settings.json");
+        if (cfg == NULL)
+        {
+            printf("Failed to load configuration!\n");
+            exit(-1);
+        }
+
+        char *fetcher_exec_path = Config_Get_Field_Value_String(cfg, "fetcher_exec_path");
+        size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
+        
+        for (size_t i = 0; i < fetcher_command_count; i++)
+        {
+            char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
+        
+            char **args = NULL;
+            parse_command_args(cmd_args_string, &args);
+        
+            pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, "fetchers_commands_args", fetcher_exec_path, args, false);
+        
+            if (fetcher_pid < 0)
+            {
+                Logger_Write(&logger_process, "Failed to spawn fetcher process");
+                return -1;
+            }
+            else
+            {
+                Logger_Write(&logger_process, "Spawned fetcher process with PID %d", fetcher_pid);
+            }
+            
+            if (args != NULL)
+                free_args(args);
+        }
+
+        // Wait for child processes to finish or termination signal
+        while (!process_manager_should_quit)
+        {
+            sleep(1);
+        }
+
+        Logger_Write(&logger_process, "Process Manager shutting down...");
+        ProcessManager_TerminateAll(&process_manager);
+        
+        // Wait for all child processes to terminate
+        Logger_Write(&logger_process, "Waiting for child processes to exit...");
+        int status;
+        while (wait(&status) > 0)
+        {
+            // Reap all child processes
+        }
+        
+        ProcessManager_Destroy(&process_manager);
+        Logger_Dispose(&logger_process);
+    }
     return 0;
 }
-    //pid_t http_server_pid;
-    //http_server_pid = fork();
+//pid_t http_server_pid;
+//http_server_pid = fork();
 //     if(http_server_pid > 0)
 //     {
 //         // Parent-case        

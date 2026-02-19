@@ -62,3 +62,4 @@ dkms.conf
 # IDE files
 .vscode/
 *.txt
+data/*
