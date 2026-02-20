@@ -16,26 +16,33 @@ static int compare_price(const void *a, const void *b)
     return (pa > pb) - (pa < pb);
 }
 
-static Energy_Action decide_action(float price, float low_price, float high_price, double sun_index)
+static Energy_Price_Level price_grading(float price, float low, float high)
 {
-    (void)sun_index;
+    if (price <= low)   return PRICE_LOW;
+    if (price >= high)  return PRICE_HIGH;
 
-    if(price <= low_price)
-    {
-        return ENERGY_BUY;
-    }
+    return PRICE_MEDIUM;
+}
 
-    // Don't know if this is too strict during the winter, because it never comes true
-    /* if(price >= high_price && sun_index > 0.2)
-    {
+static Energy_Production_Level production_grading(double sun_index)
+{
+    if (sun_index < 0.05)   return PROD_NONE;
+    if (sun_index < 0.20)   return PROD_LOW;
+    if (sun_index < 0.60)   return PROD_MEDIUM;
+
+    return PROD_HIGH;
+}
+
+static Energy_Action decide_action(Energy_Price_Level price_level, Energy_Production_Level prod_level)
+{
+    if (price_level == PRICE_LOW && prod_level <= PROD_LOW)
+        return ENERGY_CHARGE;
+
+    if (price_level == PRICE_HIGH && prod_level >= PROD_MEDIUM)
         return ENERGY_SELL;
-    } */
 
-    // Here we trigger to sell when the price is high, but don't care about sun_index
-    if(price >= high_price)
-    {
-        return ENERGY_SELL;
-    }
+    if (prod_level >= PROD_MEDIUM)
+        return ENERGY_USE;
 
     return ENERGY_IDLE;
 }
@@ -44,9 +51,17 @@ static const char *action_to_string(Energy_Action action)
 {
     switch(action)
     {
-        case ENERGY_BUY:    return "BUY";
-        case ENERGY_SELL:    return "SELL";
-        default:    return "IDLE";
+        case ENERGY_CHARGE:    
+            return "CHARGE";
+
+        case ENERGY_SELL:   
+            return "SELL";
+
+        case ENERGY_USE:
+            return "USE";
+
+        default:            
+            return "IDLE";
     }
 }
 
@@ -54,8 +69,14 @@ Energy_Status Energy_Advisor_Advice()
 {
     OpenMeteo_Data weather = OpenMeteo_ConvertJSONToData(ENERGY_ADVISOR_WEATHER_FILE);
     Spotprice_Data prices = Spotprice_ConvertJSONToData(ENERGY_ADVISOR_SPOTPRICE_FILE);
+
+    time_t current_time = time(NULL);
+    struct tm *tm_info = localtime(&current_time);
+    char log_filename[64];
+    snprintf(log_filename, sizeof(log_filename), "Energy_Advice_%04d-%02d-%02d.txt", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
+
     Logger energy_advisor_log = {0};
-    Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", "Energy_Advice.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT);
+    Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
 
     if(weather.length == 0 || prices.length == 0)
     {
@@ -79,11 +100,14 @@ Energy_Status Energy_Advisor_Advice()
 
     free(price_buffer);
 
-    Logger_Write(&energy_advisor_log, "Low price threshold : %.3f SEK/kWh\n", low_price);
-    Logger_Write(&energy_advisor_log, "High price threshold : %.3f SEK/kWh\n\n", high_price);    
+    Logger_Write(&energy_advisor_log, "=========== ENERGY ADVICE FOR %04d-%02d-%02d ===========", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
+    Logger_Write(&energy_advisor_log, "----------------------------------------------------\n");
 
-    Logger_Write(&energy_advisor_log, "Time             | Sun  | Price | Action\n");
-    Logger_Write(&energy_advisor_log, "-----------------+------+-------+-------\n");
+    Logger_Write(&energy_advisor_log, "Lowest price: %.3f SEK/kWh\n", low_price);
+    Logger_Write(&energy_advisor_log, "Highest price: %.3f SEK/kWh\n\n", high_price);    
+
+    Logger_Write(&energy_advisor_log, "Time             | Sun  | Price |  Temp(C) | Action\n");
+    Logger_Write(&energy_advisor_log, "-----------------+------+-------+----------+-------\n");
 
     for(i = 0; i < count; i++)
     {
@@ -102,16 +126,19 @@ Energy_Status Energy_Advisor_Advice()
         );
 
         double sun_index = (weather_quarter->direct_radiation + weather_quarter->diffuse_radiation) / 300.0;
+        float temp = weather_quarter->temperature_2m;
 
         if(sun_index > 1.0)
         {
             sun_index = 1.0;
         }
 
-        Energy_Action action = decide_action(price_quarter->SEK_per_kWh, low_price, high_price, sun_index);
+        Energy_Price_Level price_level = price_grading(price_quarter->SEK_per_kWh, low_price, high_price);
+        Energy_Production_Level prod_level = production_grading(sun_index);
+        Energy_Action action = decide_action(price_level, prod_level);
         
         
-        Logger_Write(&energy_advisor_log, "%s | %.2f | %.3f | %s\n", timebuf, sun_index, price_quarter->SEK_per_kWh, action_to_string(action));
+        Logger_Write(&energy_advisor_log, "%s | %.2f | %.3f |   %.1f   | %s\n", timebuf, sun_index, price_quarter->SEK_per_kWh, temp, action_to_string(action));
     }
 
     Logger_Dispose(&energy_advisor_log);

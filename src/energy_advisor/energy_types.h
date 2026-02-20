@@ -11,8 +11,9 @@ typedef enum
 {
     // Maybe we can add more later, if necessary
     ENERGY_IDLE = 0,
-    ENERGY_BUY,
-    ENERGY_SELL  
+    ENERGY_SELL,
+    ENERGY_USE,
+    ENERGY_CHARGE  
 } Energy_Action;
 
 typedef enum
@@ -21,8 +22,25 @@ typedef enum
     ENERGY_STATUS_DATA_MISSING
 } Energy_Status;
 
+typedef enum
+{
+    PROD_NONE,
+    PROD_LOW,
+    PROD_MEDIUM,
+    PROD_HIGH
+} Energy_Production_Level;
+
+typedef enum
+{
+    PRICE_LOW,
+    PRICE_MEDIUM,
+    PRICE_HIGH
+} Energy_Price_Level;
+
 typedef struct
 {
+    Energy_Production_Level prod_level;
+    Energy_Price_Level price_level;
     Energy_Action action[SNAPSHOTS];
     Energy_Status status;
     time_t timestamps[SNAPSHOTS];
