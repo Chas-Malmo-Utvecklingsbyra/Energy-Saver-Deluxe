@@ -214,24 +214,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    char cwd[255];
-    memset(cwd, 0, sizeof(cwd));
-
-    if (getcwd(cwd, sizeof(cwd)) == NULL)
-    {
-        printf("Could not get working directory!\r\n");
-        return -1;
-    }
-
-    char full_path[260];
-    memset(full_path, 0, sizeof(full_path));
-    snprintf(full_path, sizeof(full_path), "%s/data", cwd);
-
-    if (!File_Helper_Dir_Exists(full_path))
-    {
-        File_Helper_Create_Dir(full_path);
-    }
-
     ProcessManager process_manager;
     pid_t process_manager_pid;
     
