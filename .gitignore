@@ -63,3 +63,7 @@ dkms.conf
 .vscode/
 *.txt
 data/*
+
+# other
+EnergySaverDeluxe.make
+Makefile
