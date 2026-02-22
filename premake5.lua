@@ -1,5 +1,6 @@
 
 local PROJECT_NAME = "EnergySaverDeluxe"
+local BUILD_DIR = "build/"
 
 -- premake5.lua
 workspace (PROJECT_NAME)
@@ -10,8 +11,8 @@ project (PROJECT_NAME)
    language "C"
    cdialect "C99"
 
-   targetdir "build/bin/%{cfg.buildcfg}"
-   objdir ("build/obj/%{cfg.buildcfg}")
+   targetdir (BUILD_DIR .. "bin/%{cfg.buildcfg}")
+   objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}")
 
    buildoptions { "-Wall", "-Wextra", "-Werror", "-Wpedantic" }
    links { "pthread", "curl" }
@@ -35,7 +36,7 @@ newaction {
     execute = function ()
         os.execute("premake5 gmake")
         os.execute("make")
-        os.execute("./bin/Debug/" .. PROJECT_NAME)
+        os.execute("./" .. BUILD_DIR .. "bin/Debug/" .. PROJECT_NAME)
     end
 }
 
