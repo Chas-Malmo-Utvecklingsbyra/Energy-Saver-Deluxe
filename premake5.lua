@@ -9,7 +9,9 @@ project (PROJECT_NAME)
    kind "ConsoleApp"
    language "C"
    cdialect "C99"
-   targetdir "bin/%{cfg.buildcfg}"
+
+   targetdir "build/bin/%{cfg.buildcfg}"
+   objdir ("build/obj/%{cfg.buildcfg}")
 
    buildoptions { "-Wall", "-Wextra", "-Werror", "-Wpedantic" }
    links { "pthread", "curl" }
@@ -41,8 +43,7 @@ newaction {
     trigger     = "clean",
     description = "Clean the build folders/files on Ubuntu",
     execute = function ()
-        os.execute("rm -r bin")
-        os.execute("rm -r obj")
+        os.execute("rm -r build")
         os.execute("rm " .. PROJECT_NAME .. ".make")
         os.execute("rm Makefile")
     end
