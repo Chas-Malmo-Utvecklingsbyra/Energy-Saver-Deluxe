@@ -197,7 +197,6 @@ int energy_advisor_start(void *context)
             char full_path[128];
             snprintf(full_path, sizeof(full_path), "%s%s", directory, filename);
 
-            printf("Full path: %s\n", full_path);
             if (File_Helper_File_Exists(full_path))
             {
                 if (i == 0)
