@@ -17,24 +17,33 @@
 #include "file_helper/file_helper.h"
 #include "energy_advisor/energy_advisor.h"
 
+#define ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS 60
+
 bool http_server_should_quit = false;
 bool process_manager_should_quit = false;
+bool energy_advisor_should_quit = false;
 
 typedef struct
 {
     Logger *logger;
 } HTTP_Cool_Context;
 
-void check_signal(int signal)
+void check_signal_http_server(int signal)
 {
     printf("Got signal: %d\n", signal);
     http_server_should_quit = true;
 }
 
-void process_manager_signal_handler(int signal)
+void check_signal_process_manager(int signal)
 {
     printf("Process Manager received signal: %d\n", signal);
     process_manager_should_quit = true;
+}
+
+void check_signal_energy_advisor(int signal)
+{
+    printf("Energy Advisor received signal: %d\n", signal);
+    energy_advisor_should_quit = true;
 }
 
 void help_callback(void)
@@ -133,8 +142,8 @@ int http_server_process(void *context)
     Logger logger = {0};
     Logger_Init(&logger, "HTTP-Server", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
 
-    signal(SIGQUIT, check_signal);
-    signal(SIGTERM, check_signal);
+    signal(SIGQUIT, check_signal_http_server);
+    signal(SIGTERM, check_signal_http_server);
     
     HTTP_Server http_server;
 
@@ -167,6 +176,9 @@ int energy_advisor_start(void *context)
 {   
     (void)context;
 
+    signal(SIGQUIT, check_signal_energy_advisor);
+    signal(SIGTERM, check_signal_energy_advisor);
+
     Config_t *cfg = Config_Get_Instance(NULL);
 
     size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
@@ -175,7 +187,7 @@ int energy_advisor_start(void *context)
     bool first_file_exists = false;
     bool second_file_exists = false;
 
-    while(1)
+    while(energy_advisor_should_quit == false)
     {
         for (size_t i = 0; i < fetcher_command_count; i++)
         {
@@ -217,7 +229,11 @@ int energy_advisor_start(void *context)
         {
             Energy_Advisor_Advice();
         }
+        
+        sleep(ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS);
     }
+    
+    return 0;
 }
 
 //TODO Test with execve to run a different binary as child process, http request service with args
@@ -270,8 +286,8 @@ int main(int argc, char **argv)
     else if (process_manager_pid == 0)
     {
         // Child-case
-        signal(SIGTERM, process_manager_signal_handler);
-        signal(SIGINT, process_manager_signal_handler);
+        signal(SIGTERM, check_signal_process_manager);
+        signal(SIGINT, check_signal_process_manager);
         
         Logger logger_process = {0};
         Logger_Init(&logger_process, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
@@ -291,15 +307,11 @@ int main(int argc, char **argv)
             Logger_Write(&logger_process, "Failed to spawn HTTP Server process");
             return -1;
         }
-        else
-        {
-            Logger_Write(&logger_process, "Spawned HTTP Server process with PID %d", server_pid);
-        }
 
         Config_t *cfg = Config_Get_Instance("settings.json");
         if (cfg == NULL)
         {
-            printf("Failed to load configuration!\n");
+            Logger_Write(&logger_process,"Failed to load configuration!");
             exit(-1);
         }
 
@@ -310,26 +322,28 @@ int main(int argc, char **argv)
         for (size_t i = 0; i < fetcher_command_count; i++)
         {
             char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
-            parse_command_args(cmd_args_string, &args);        
-        
-            pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, "fetchers_commands_args", fetcher_exec_path, args, false);
-        
+            parse_command_args(cmd_args_string, &args);
+
+            pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, fetcher_exec_path, fetcher_exec_path, args, false);
+
             if (fetcher_pid < 0)
             {
                 Logger_Write(&logger_process, "Failed to spawn fetcher process");
                 return -1;
-            }
-            else
-            {
-                Logger_Write(&logger_process, "Spawned fetcher process with PID %d", fetcher_pid);
             }
 
             if (args != NULL)
                 free_args(args);
         }
 
+        
+        pid_t energy_advisor_pid = ProcessManager_Spawn(&process_manager, "Energy Advisor", energy_advisor_start, NULL, false);
 
-        ProcessManager_Spawn(&process_manager, "Energy Advisor", energy_advisor_start, NULL, false);
+        if (energy_advisor_pid < 0)
+        {
+            Logger_Write(&logger_process, "Failed to spawn Energy Advisor process");
+            return -1;
+        }
 
         // Wait for child processes to finish or termination signal
         while (!process_manager_should_quit)
@@ -347,7 +361,7 @@ int main(int argc, char **argv)
         {
             // Reap all child processes
         }
-        
+        Config_Instance_Dispose();
         ProcessManager_Destroy(&process_manager);
         Logger_Dispose(&logger_process);
     }
