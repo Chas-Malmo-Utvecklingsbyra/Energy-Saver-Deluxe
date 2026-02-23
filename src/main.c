@@ -15,6 +15,7 @@
 #include "process_manager/process_manager.h"
 #include "config/config.h"
 #include "file_helper/file_helper.h"
+#include "energy_advisor/energy_advisor.h"
 
 bool http_server_should_quit = false;
 bool process_manager_should_quit = false;
@@ -211,6 +212,13 @@ int main(int argc, char **argv)
     if (!CLI_Parse(&cli, argc, argv))
     {
         printf("Failed to parse CLI arguments!\n");
+        return -1;
+    }
+
+    Energy_Status status = Energy_Advisor_Advice();
+    if (status != ENERGY_STATUS_OK)
+    {
+        printf("Energy data is missing!\r\n");
         return -1;
     }
 

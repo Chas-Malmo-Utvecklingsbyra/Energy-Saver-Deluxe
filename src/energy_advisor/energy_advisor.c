@@ -6,8 +6,8 @@
 #include "energy_advisor.h"
 #include "logger/logger.h"
 
-#define ENERGY_ADVISOR_WEATHER_FILE     "weather.json"
-#define ENERGY_ADVISOR_SPOTPRICE_FILE   "spotprice.json"
+#define ENERGY_ADVISOR_WEATHER_FILE     "data/weather/weather.json"
+#define ENERGY_ADVISOR_SPOTPRICE_FILE   "data/price/price.json"
 
 static int compare_price(const void *a, const void *b)
 {
