@@ -197,6 +197,7 @@ int energy_advisor_start(void *context)
             char full_path[128];
             snprintf(full_path, sizeof(full_path), "%s%s", directory, filename);
 
+            printf("Full path: %s\n", full_path);
             if (File_Helper_File_Exists(full_path))
             {
                 if (i == 0)
@@ -235,13 +236,6 @@ int main(int argc, char **argv)
     if (!CLI_Parse(&cli, argc, argv))
     {
         printf("Failed to parse CLI arguments!\n");
-        return -1;
-    }
-
-    Energy_Status status = Energy_Advisor_Advice();
-    if (status != ENERGY_STATUS_OK)
-    {
-        printf("Energy data is missing!\r\n");
         return -1;
     }
 
