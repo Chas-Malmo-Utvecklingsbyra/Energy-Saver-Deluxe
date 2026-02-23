@@ -163,39 +163,62 @@ int http_server_process(void *context)
     return 0;
 }
 
-// int process_manager_process(void *context)
-// {
-//     Logger logger = {0};
-//     Logger_Init(&logger, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
-//     Logger_Write(&logger, "%s", "Process Manager started");
+int energy_advisor_start(void *context)
+{   
+    (void)context;
 
-//     ProcessManager process_manager;
-//     if (!ProcessManager_Init(&process_manager, &logger))
-//     {
-//         Logger_Write(&logger, "Failed to initialize Process Manager");
-//         return -1;
-//     }
-    
-//     HTTP_Cool_Context cool_context = { .logger = &logger };
-//     pid_t server_pid = ProcessManager_Spawn(&process_manager, "HTTP Server", http_server_process, &cool_context, false);
+    Config_t *cfg = Config_Get_Instance(NULL);
 
-//     if (server_pid < 0)
-//     {
-//         Logger_Write(&logger, "Failed to spawn HTTP Server process");
-//         return -1;
-//     }
-//     else
-//     {
-//         Logger_Write(&logger, "Spawned HTTP Server process with PID %d", server_pid);
-//     }
+    size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
+    char **args = NULL;
 
+    bool first_file_exists = false;
+    bool second_file_exists = false;
 
+    while(1)
+    {
+        for (size_t i = 0; i < fetcher_command_count; i++)
+        {
+            char *directory;
+            char *filename;
+            char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
+            parse_command_args(cmd_args_string, &args);
 
-//     ProcessManager_Destroy(&process_manager);
-//     Logger_Dispose(&logger);
-    
-//     return 0;
-// }
+            if (strcmp(args[i], "-o") == 0)
+            {
+                directory = args[i + 1];
+            }
+
+            if (strcmp(args[i], "-n") == 0)
+            {
+                filename = args[i + 1];
+            }
+
+            char full_path[128];
+            snprintf(full_path, sizeof(full_path), "%s%s", directory, filename);
+
+            if (File_Helper_File_Exists(full_path))
+            {
+                if (i == 0)
+                {
+                    first_file_exists = true;
+                }
+                else 
+                {
+                    second_file_exists = true;
+                }
+            }
+
+            if (args != NULL)
+                free_args(args);
+        }
+
+        if (first_file_exists == true && second_file_exists == true)
+        {
+            Energy_Advisor_Advice();
+        }
+    }
+}
 
 //TODO Test with execve to run a different binary as child process, http request service with args
 int main(int argc, char **argv)
@@ -289,13 +312,12 @@ int main(int argc, char **argv)
 
         char *fetcher_exec_path = Config_Get_Field_Value_String(cfg, "fetcher_exec_path");
         size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
+        char **args = NULL;
         
         for (size_t i = 0; i < fetcher_command_count; i++)
         {
             char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
-        
-            char **args = NULL;
-            parse_command_args(cmd_args_string, &args);
+            parse_command_args(cmd_args_string, &args);        
         
             pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, "fetchers_commands_args", fetcher_exec_path, args, false);
         
@@ -308,10 +330,13 @@ int main(int argc, char **argv)
             {
                 Logger_Write(&logger_process, "Spawned fetcher process with PID %d", fetcher_pid);
             }
-            
+
             if (args != NULL)
                 free_args(args);
         }
+
+
+        ProcessManager_Spawn(&process_manager, "Energy Advisor", energy_advisor_start, NULL, false);
 
         // Wait for child processes to finish or termination signal
         while (!process_manager_should_quit)
@@ -335,85 +360,3 @@ int main(int argc, char **argv)
     }
     return 0;
 }
-//pid_t http_server_pid;
-//http_server_pid = fork();
-//     if(http_server_pid > 0)
-//     {
-//         // Parent-case        
-//         Logger logger = {0};
-
-//         Logger_Init(&logger, "Parent", "logfolder", LOGGER_OUTPUT_TYPE_FILE_TEXT);
-//         Logger_Write(&logger, "%s", "Hello");
-
-//         char buffer[32] = {0};
-//         bool should_quit = false;
-//         while(should_quit == false)
-//         {
-//             fgets(buffer, sizeof(buffer), stdin);
-//             if(strncmp(buffer, "q", 1) == 0)
-//             {
-//                 if(kill(http_server_pid, SIGTERM) == -1)
-//                 {
-//                     Logger_Write(&logger, "Error: Did not correctly kill the process: %d", errno);
-//                     return -4;
-//                 }              
-
-//                 int stat_loc;
-//                 waitpid(http_server_pid, &stat_loc, 0);
-//                 printf("stat loc: %d\n", stat_loc);
-
-//                 should_quit = true;
-//             } 
-//         }
-//         Logger_Write(&logger, "Goodbye, process done.");
-//         Logger_Dispose(&logger);
-//     }
-//     else if(http_server_pid == 0)
-//     {
-//         // Child-case
-//         Logger logger = {0};    
-
-//         Logger_Init(&logger, "Child", NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
-//         Logger_Write(&logger, "%s", "Hello");
-        
-//         signal(SIGQUIT, check_signal);
-//         signal(SIGTERM, check_signal);
-//         signal(SIGKILL, check_signal);
-
-//         HTTP_Server http_server;
-
-//         HTTP_Cool_Context cool_context;
-//         cool_context.logger = &logger;
-//         if(HTTP_Server_Initialize(&http_server, max_connections, &cool_context) == false)
-//         {
-//             Logger_Write(&logger, "Server failed to initialize");
-//             return -1;
-//         }
-
-//         /* Register valid routes */
-//         HTTP_Server_Register_Route(&http_server, "/", HTTP_METHOD_GET, root_handler_handle);
-
-//         if(HTTP_Server_Start(&http_server, port) == false)
-//         {
-//             Logger_Write(&logger, "Server failed to start");
-//             return -2;
-//         }
-
-//         while(http_server_should_quit == false)
-//         {
-//             HTTP_Server_Work(&http_server);
-//         }
-
-//         Logger_Write(&logger, "Disposing HTTP Server");
-//         Logger_Dispose(&logger);
-//         HTTP_Server_Dispose(&http_server);
-//     }
-//     else
-//     {
-//         // TODO:
-//         // Error: negative value of pid
-//         // Check errno
-//     }
-//     Logger_Dispose(&logger_main);
-//     return 0;
-// }
