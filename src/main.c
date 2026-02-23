@@ -196,19 +196,22 @@ int energy_advisor_start(void *context)
             char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
             parse_command_args(cmd_args_string, &args);
 
-            if (strcmp(args[i], "-o") == 0)
-            {
-                directory = args[i + 1];
-            }
+            for (int j = 0; args[j]; j++)
+            {   
+                if (strcmp(args[j], "-o") == 0 && args[j + 1])
+                {
+                    directory = args[j + 1];
+                }
 
-            if (strcmp(args[i], "-n") == 0)
-            {
-                filename = args[i + 1];
+                if (strcmp(args[j], "-n") == 0 && args[j + 1])
+                {
+                    filename = args[j + 1];
+                }
             }
 
             char full_path[128];
-            snprintf(full_path, sizeof(full_path), "%s%s", directory, filename);
-
+            snprintf(full_path, sizeof(full_path), "%s/%s", directory, filename);
+            
             if (File_Helper_File_Exists(full_path))
             {
                 if (i == 0)
@@ -227,9 +230,17 @@ int energy_advisor_start(void *context)
 
         if (first_file_exists == true && second_file_exists == true)
         {
-            Energy_Advisor_Advice();
+            Energy_Status status = Energy_Advisor_Advice();
+            if (status != ENERGY_STATUS_OK)
+            {
+                printf("Energy Advice data is missing\n");
+                return -1;
+            }
         }
         
+        first_file_exists = false;
+        second_file_exists = false;
+
         sleep(ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS);
     }
     
