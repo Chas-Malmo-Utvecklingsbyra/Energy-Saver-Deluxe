@@ -8,5 +8,4 @@
 
 Energy_Status Energy_Advisor_Advice();
 
-
 #endif

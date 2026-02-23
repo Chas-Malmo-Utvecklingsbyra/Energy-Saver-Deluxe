@@ -9,7 +9,6 @@
 
 typedef enum
 {
-    // Maybe we can add more later, if necessary
     ENERGY_IDLE = 0,
     ENERGY_SELL,
     ENERGY_USE,
@@ -39,14 +38,31 @@ typedef enum
 
 typedef struct
 {
+    float charge_from_grid;
+    float charge_from_source;
+
+    float consume_from_grid;
+    float consume_from_source;
+    float consume_from_battery;
+
+    float sell_from_battery;
+    float sell_from_source;
+} Energy_Flow_Advice;
+
+typedef struct
+{
+    float soc;
+} Battery_State;
+
+typedef struct
+{
     Energy_Production_Level prod_level;
     Energy_Price_Level price_level;
+    Energy_Flow_Advice advice;
     Energy_Action action[SNAPSHOTS];
     Energy_Status status;
     time_t timestamps[SNAPSHOTS];
-
-    // Not yet implemented
-    double simulated_storage[SNAPSHOTS];
+    FILE *fp;
 } Energy_Plan;
 
 

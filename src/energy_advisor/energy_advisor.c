@@ -5,6 +5,7 @@
 
 #include "energy_advisor.h"
 #include "logger/logger.h"
+#include "file_helper/file_helper.h"
 
 #define ENERGY_ADVISOR_WEATHER_FILE     "data/weather/weather.json"
 #define ENERGY_ADVISOR_SPOTPRICE_FILE   "data/price/price.json"
@@ -16,24 +17,64 @@ static int compare_price(const void *a, const void *b)
     return (pa > pb) - (pa < pb);
 }
 
-static Energy_Price_Level price_grading(float price, float low, float high)
+/* static Energy_Price_Level price_grading(float price, float low, float high)
 {
     if (price <= low)   return PRICE_LOW;
     if (price >= high)  return PRICE_HIGH;
 
     return PRICE_MEDIUM;
+} */
+
+static float normalize_price(float price, float low, float high)
+{
+    if (price <= low)   return 0.0f;
+    if (price >= high)  return 1.0f;
+
+    return (price - low) / (high - low);
 }
 
-static Energy_Production_Level production_grading(double sun_index)
+/* static Energy_Production_Level production_grading(double sun_index)
 {
     if (sun_index < 0.05)   return PROD_NONE;
     if (sun_index < 0.20)   return PROD_LOW;
     if (sun_index < 0.60)   return PROD_MEDIUM;
 
     return PROD_HIGH;
+} */
+
+static Energy_Flow_Advice compute_advice(float price_norm, float production, float battery_soc)
+{
+    Energy_Flow_Advice advice = {0};
+    
+    advice.charge_from_grid = (1.0f - price_norm) * (1.0f - production);
+    advice.charge_from_source = production * (1.0f - production) * (1.0f - battery_soc);
+
+    advice.consume_from_source = production;
+    advice.consume_from_battery = battery_soc * price_norm;
+    advice.consume_from_grid = (1.0f - production) * (1.0f - battery_soc);
+
+    advice.sell_from_source = production * price_norm;
+    advice.sell_from_battery = battery_soc * price_norm;
+
+    return advice;
 }
 
-static Energy_Action decide_action(Energy_Price_Level price_level, Energy_Production_Level prod_level)
+static void write_advice_report(const char *path, const char *filename, const char *fmt, ...)
+{
+    char buffer[4096];
+
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    if (len <= 0)
+        return;
+
+    File_Helper_Write(path, filename, buffer, (size_t)len, FILE_HELPER_MODE_APPEND, false);
+}
+
+/* static Energy_Action decide_action(Energy_Price_Level price_level, Energy_Production_Level prod_level)
 {
     if (price_level == PRICE_LOW && prod_level <= PROD_LOW)
         return ENERGY_CHARGE;
@@ -63,21 +104,28 @@ static const char *action_to_string(Energy_Action action)
         default:            
             return "IDLE";
     }
-}
+} */
+
+
 
 Energy_Status Energy_Advisor_Advice()
 {
     OpenMeteo_Data weather = OpenMeteo_ConvertJSONToData(ENERGY_ADVISOR_WEATHER_FILE);
     Spotprice_Data prices = Spotprice_ConvertJSONToData(ENERGY_ADVISOR_SPOTPRICE_FILE);
-
+    
     time_t current_time = time(NULL);
     struct tm *tm_info = localtime(&current_time);
-    char log_filename[64];
-    snprintf(log_filename, sizeof(log_filename), "Energy_Advice_%04d-%02d-%02d.txt", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
+
+    char filename[64];
+    snprintf(filename, sizeof(filename), "Energy_Advice_%04d-%02d-%02d.txt", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
+    
+    const char *advice_dir = "Energy_Advice_Reports";
+    File_Helper_Create_Dir(advice_dir);
+    File_Helper_Create(advice_dir, filename);
 
     Logger energy_advisor_log = {0};
+    char log_filename[64];
     Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
-
     if(weather.length == 0 || prices.length == 0)
     {
         Logger_Write(&energy_advisor_log, "%s" ,"Failed to load input data");
@@ -100,45 +148,49 @@ Energy_Status Energy_Advisor_Advice()
 
     free(price_buffer);
 
-    Logger_Write(&energy_advisor_log, "=========== ENERGY ADVICE FOR %04d-%02d-%02d ===========", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
-    Logger_Write(&energy_advisor_log, "----------------------------------------------------\n");
+    write_advice_report(advice_dir, filename, "\n============================================= ENERGY ADVICE FOR %04d-%02d-%02d ============================================\n\n", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
+    
 
-    Logger_Write(&energy_advisor_log, "Lowest price: %.3f SEK/kWh\n", low_price);
-    Logger_Write(&energy_advisor_log, "Highest price: %.3f SEK/kWh\n\n", high_price);    
+    write_advice_report(advice_dir, filename, "============================================= Lowest price: %.3f SEK/kWh =============================================\n", low_price);
+    write_advice_report(advice_dir, filename, "============================================= Highest price: %.3f SEK/kWh ============================================\n\n", high_price);    
 
-    Logger_Write(&energy_advisor_log, "Time             | Sun  | Price |  Temp(C) | Action\n");
-    Logger_Write(&energy_advisor_log, "-----------------+------+-------+----------+-------\n");
+    write_advice_report(advice_dir, filename, "Time             | Sun  | Price | Norm | Charge (Grid/Source) | Consume (Grid/Source/Battery) | Sell (Battery/Source) |\n");
+    write_advice_report(advice_dir, filename, "-----------------+------+-------+------+----------------------+-------------------------------+-----------------------+\n");
 
     for(i = 0; i < count; i++)
     {
         OpenMeteo_Quarter *weather_quarter = &weather.quarters[i];
         Spotprice_Quarter *price_quarter = &prices.quarters[i];
+        
 
         char timebuf[256];
         snprintf(
             timebuf, sizeof(timebuf), 
             "%04d-%02d-%02d %02d:%02d", 
-            weather_quarter->time.tm_year + 1900,
-            weather_quarter->time.tm_mon + 1,
-            weather_quarter->time.tm_mday,
-            weather_quarter->time.tm_hour,
-            weather_quarter->time.tm_min
+            price_quarter->time_start.tm_year + 1900,
+            price_quarter->time_start.tm_mon + 1,
+            price_quarter->time_start.tm_mday,
+            price_quarter->time_start.tm_hour,
+            price_quarter->time_start.tm_min
         );
 
         double sun_index = (weather_quarter->direct_radiation + weather_quarter->diffuse_radiation) / 300.0;
-        float temp = weather_quarter->temperature_2m;
+        float price_norm = normalize_price(price_quarter->SEK_per_kWh, low_price, high_price);
+
+        Battery_State battery = { .soc = 0.5f };
+
+        Energy_Flow_Advice advice = compute_advice(price_norm, sun_index, battery.soc);
 
         if(sun_index > 1.0)
         {
             sun_index = 1.0;
         }
-
-        Energy_Price_Level price_level = price_grading(price_quarter->SEK_per_kWh, low_price, high_price);
-        Energy_Production_Level prod_level = production_grading(sun_index);
-        Energy_Action action = decide_action(price_level, prod_level);
         
-        
-        Logger_Write(&energy_advisor_log, "%s | %.2f | %.3f |   %.1f   | %s\n", timebuf, sun_index, price_quarter->SEK_per_kWh, temp, action_to_string(action));
+        write_advice_report(advice_dir, filename,  
+            "%s | %.2f | %.3f | %.2f | "
+            " G: %.2f  | S: %.2f  | "
+            "G: %.2f  | S: %.2f | B: %.2f  | "
+            "  B: %.2f  |  S: %.2f |\n", timebuf, sun_index, price_quarter->SEK_per_kWh, price_norm, advice.charge_from_grid, advice.charge_from_source, advice.consume_from_grid, advice.consume_from_source, advice.consume_from_battery, advice.sell_from_battery, advice.sell_from_source);
     }
 
     Logger_Dispose(&energy_advisor_log);
