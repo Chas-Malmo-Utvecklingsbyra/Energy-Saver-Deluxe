@@ -46,14 +46,14 @@ static Energy_Flow_Advice compute_advice(float price_norm, float production, flo
 {
     Energy_Flow_Advice advice = {0};
     
-    advice.charge_from_grid = (1.0f - price_norm) * (1.0f - production);
-    advice.charge_from_source = production * (1.0f - production) * (1.0f - battery_soc);
+    advice.charge_from_grid = (1.0f - price_norm) * (1.0f - production) * (1.0f - battery_soc);
+    advice.charge_from_source = production * (1.0f - battery_soc);
 
     advice.consume_from_source = production;
     advice.consume_from_battery = battery_soc * price_norm;
-    advice.consume_from_grid = (1.0f - production) * (1.0f - battery_soc);
+    advice.consume_from_grid = (1.0f - production) * (1.0f - battery_soc) * (1.0f - price_norm);
 
-    advice.sell_from_source = production * price_norm;
+    advice.sell_from_source = production * price_norm * battery_soc;
     advice.sell_from_battery = battery_soc * price_norm;
 
     return advice;
@@ -126,7 +126,7 @@ Energy_Status Energy_Advisor_Advice()
     Logger energy_advisor_log = {0};
     char log_filename[64];
     Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
-    if(weather.length == 0 || prices.length == 0)
+    if (weather.length == 0 || prices.length == 0)
     {
         Logger_Write(&energy_advisor_log, "%s" ,"Failed to load input data");
         return ENERGY_STATUS_DATA_MISSING;
@@ -136,7 +136,7 @@ Energy_Status Energy_Advisor_Advice()
 
     float *price_buffer = malloc(sizeof(float) * count);
     int i;
-    for(i = 0; i < count; i++)
+    for (i = 0; i < count; i++)
     {
         price_buffer[i] = prices.quarters[i].SEK_per_kWh;
     }
@@ -148,6 +148,36 @@ Energy_Status Energy_Advisor_Advice()
 
     free(price_buffer);
 
+    struct tm report_date = prices.quarters[0].time_start;
+
+    int weather_start = -1;
+    int weather_count = 0;
+
+    for (i = 0; i < weather.length; i++)
+    {
+        struct tm *weather_time = &weather.quarters[i].time;
+
+        if (weather_time->tm_year == report_date.tm_year && weather_time->tm_mon == report_date.tm_mon && weather_time->tm_mday == report_date.tm_mday)
+        {
+            if (weather_start == -1)
+            {
+                weather_start = i;
+            }
+            weather_count++;
+        }
+    }
+
+    if (weather_count < 0)
+    {
+        Logger_Write(&energy_advisor_log, "%s", "Failed to get weather data for requested date");
+        return ENERGY_STATUS_DATA_MISSING;
+    }
+    if (weather_count < prices.length)
+    {
+        Logger_Write(&energy_advisor_log, "%s", "Insufficient weather data (%d quarters) for %d price quarters", weather_count, prices.length);
+        return ENERGY_STATUS_DATA_MISSING;
+    }
+
     write_advice_report(advice_dir, filename, "\n============================================= ENERGY ADVICE FOR %04d-%02d-%02d ============================================\n\n", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
     
 
@@ -157,9 +187,9 @@ Energy_Status Energy_Advisor_Advice()
     write_advice_report(advice_dir, filename, "Time             | Sun  | Price | Norm | Charge (Grid/Source) | Consume (Grid/Source/Battery) | Sell (Battery/Source) |\n");
     write_advice_report(advice_dir, filename, "-----------------+------+-------+------+----------------------+-------------------------------+-----------------------+\n");
 
-    for(i = 0; i < count; i++)
+    for (i = 0; i < count; i++)
     {
-        OpenMeteo_Quarter *weather_quarter = &weather.quarters[i];
+        OpenMeteo_Quarter *weather_quarter = &weather.quarters[weather_start + i];
         Spotprice_Quarter *price_quarter = &prices.quarters[i];
         
 
@@ -181,7 +211,7 @@ Energy_Status Energy_Advisor_Advice()
 
         Energy_Flow_Advice advice = compute_advice(price_norm, sun_index, battery.soc);
 
-        if(sun_index > 1.0)
+        if (sun_index > 1.0)
         {
             sun_index = 1.0;
         }
