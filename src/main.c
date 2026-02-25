@@ -270,9 +270,8 @@ int main(int argc, char **argv)
     }
 
     ProcessManager process_manager;
-    pid_t process_manager_pid;
-    
-    process_manager_pid = fork();
+    pid_t process_manager_pid = fork();
+
     if (process_manager_pid > 0)
     {
         // Parent-case
