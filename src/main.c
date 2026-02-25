@@ -352,8 +352,8 @@ int main(int argc, char **argv)
                 {
                     time_t t = time(NULL);
                     struct tm tm = *localtime(&t);
-                    char date_buffer[64];
-                    snprintf(date_buffer, sizeof(date_buffer), "/api/v1/prices/%04d/%02d-%02d_SE4.json", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+                    char date_buffer[64];                               // TODO (PL): Nice to have a setting for the different electric zones (SE1, SE2, SE3, SE4) - but not required
+                    snprintf(date_buffer, sizeof(date_buffer), "/api/v1/prices/%04d/%02d-%02d_SE4.json", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);     // TODO (PL): Implement a fix for getting the correct date when new data has arrived after 14:00 every day, now it will always call the same date regardless of the time, which is problematic if the program runs in the morning
                     free(args[j + 1]);
                     args[j + 1] = strdup(date_buffer);
                 }

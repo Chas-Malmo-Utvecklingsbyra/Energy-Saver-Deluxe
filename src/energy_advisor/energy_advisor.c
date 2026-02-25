@@ -10,20 +10,18 @@
 #define ENERGY_ADVISOR_WEATHER_FILE     "data/weather/weather.json"
 #define ENERGY_ADVISOR_SPOTPRICE_FILE   "data/price/price.json"
 
+// Testing an implementation of colors to the textfile for easier readability for the user.
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define RED     "\033[31m"
+#define RESET   "\033[0m"
+
 static int compare_price(const void *a, const void *b)
 {
     float pa = *(const float*)a;
     float pb = *(const float*)b;
     return (pa > pb) - (pa < pb);
 }
-
-/* static Energy_Price_Level price_grading(float price, float low, float high)
-{
-    if (price <= low)   return PRICE_LOW;
-    if (price >= high)  return PRICE_HIGH;
-
-    return PRICE_MEDIUM;
-} */
 
 static float normalize_price(float price, float low, float high)
 {
@@ -33,15 +31,6 @@ static float normalize_price(float price, float low, float high)
     return (price - low) / (high - low);
 }
 
-/* static Energy_Production_Level production_grading(double sun_index)
-{
-    if (sun_index < 0.05)   return PROD_NONE;
-    if (sun_index < 0.20)   return PROD_LOW;
-    if (sun_index < 0.60)   return PROD_MEDIUM;
-
-    return PROD_HIGH;
-} */
-
 static Energy_Flow_Advice compute_advice(float price_norm, float production, float battery_soc)
 {
     Energy_Flow_Advice advice = {0};
@@ -49,30 +38,44 @@ static Energy_Flow_Advice compute_advice(float price_norm, float production, flo
     advice.charge_from_grid = (1.0f - price_norm) * (1.0f - production) * (1.0f - battery_soc);
     if (advice.charge_from_grid < 0.0)
         advice.charge_from_grid = 0.0;
+    else if (advice.charge_from_grid > 1.0)
+        advice.charge_from_grid = 1.0;
 
     advice.charge_from_source = production * (1.0f - battery_soc);
     if (advice.charge_from_source < 0.0)
         advice.charge_from_source = 0.0;
-
-    advice.consume_from_source = production;
-    if (advice.consume_from_source < 0.0)
-        advice.consume_from_source = 0.0;
-
-    advice.consume_from_battery = battery_soc * price_norm;
-    if (advice.consume_from_battery < 0.0)
-        advice.consume_from_battery = 0.0;
+    else if (advice.charge_from_source > 1.0)
+        advice.charge_from_source = 1.0;
 
     advice.consume_from_grid = (1.0f - production) * (1.0f - battery_soc) * (1.0f - price_norm);
     if (advice.consume_from_grid < 0.0)
         advice.consume_from_grid = 0.0;
+    else if (advice.consume_from_grid > 1.0)
+        advice.consume_from_grid = 1.0;    
 
-    advice.sell_from_source = production * price_norm * battery_soc;
-    if (advice.sell_from_source < 0.0)
-        advice.sell_from_source = 0.0;
+    advice.consume_from_source = production;
+    if (advice.consume_from_source < 0.0)
+        advice.consume_from_source = 0.0;
+    else if (advice.consume_from_source > 1.0)
+        advice.consume_from_source = 1.0;
 
+    advice.consume_from_battery = battery_soc * price_norm;
+    if (advice.consume_from_battery < 0.0)
+        advice.consume_from_battery = 0.0;
+    else if (advice.consume_from_battery > 1.0)
+        advice.consume_from_battery = 1.0;
+    
     advice.sell_from_battery = battery_soc * price_norm;
     if (advice.sell_from_battery < 0.0)
         advice.sell_from_battery = 0.0;
+    else if (advice.sell_from_battery > 1.0)
+        advice.sell_from_battery = 1.0;
+    
+    advice.sell_from_source = production * price_norm * battery_soc;
+    if (advice.sell_from_source < 0.0)
+        advice.sell_from_source = 0.0;
+    else if (advice.sell_from_source > 1.0)
+        advice.sell_from_source = 1.0;
 
     return advice;
 }
@@ -91,40 +94,6 @@ static void write_advice_report(const char *path, const char *filename, const ch
 
     File_Helper_Write(path, filename, buffer, (size_t)len, FILE_HELPER_MODE_APPEND, false);
 }
-
-/* static Energy_Action decide_action(Energy_Price_Level price_level, Energy_Production_Level prod_level)
-{
-    if (price_level == PRICE_LOW && prod_level <= PROD_LOW)
-        return ENERGY_CHARGE;
-
-    if (price_level == PRICE_HIGH && prod_level >= PROD_MEDIUM)
-        return ENERGY_SELL;
-
-    if (prod_level >= PROD_MEDIUM)
-        return ENERGY_USE;
-
-    return ENERGY_IDLE;
-}
-
-static const char *action_to_string(Energy_Action action)
-{
-    switch(action)
-    {
-        case ENERGY_CHARGE:    
-            return "CHARGE";
-
-        case ENERGY_SELL:   
-            return "SELL";
-
-        case ENERGY_USE:
-            return "USE";
-
-        default:            
-            return "IDLE";
-    }
-} */
-
-
 
 Energy_Status Energy_Advisor_Advice()
 {
@@ -199,10 +168,15 @@ Energy_Status Energy_Advisor_Advice()
     }
 
     write_advice_report(advice_dir, filename, "\n============================================= ENERGY ADVICE FOR %04d-%02d-%02d ============================================\n\n", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
+    write_advice_report(advice_dir, filename, "How to handle this information:\n");
+    write_advice_report(advice_dir, filename, "The numbers in the table below are graded between 0 and 1, and will help you to evaluate your choices with more care.\n");
+    write_advice_report(advice_dir, filename, "If the number is 1 or close to = A strong recommendation as this field is optimal for this quarter.\n");
+    write_advice_report(advice_dir, filename, "If the number is 0 or close to = A recommendation to AVOID these actions during this time as they are in the low range.\n");
+    write_advice_report(advice_dir, filename, "\nA gentle reminder that all of these values are only a recommendation based on the information gathered, not a definitive result.\n\n");
     
 
-    write_advice_report(advice_dir, filename, "============================================= Lowest price: %.3f SEK/kWh =============================================\n", low_price);
-    write_advice_report(advice_dir, filename, "============================================= Highest price: %.3f SEK/kWh ============================================\n\n", high_price);    
+    write_advice_report(advice_dir, filename, "========================================== Low price threshold: %.3f SEK/kWh =========================================\n", low_price);
+    write_advice_report(advice_dir, filename, "========================================== High price threshold: %.3f SEK/kWh ========================================\n\n", high_price);    
 
     write_advice_report(advice_dir, filename, "Time             | Sun  | Price | Norm | Charge (Grid/Source) | Consume (Grid/Source/Battery) | Sell (Battery/Source) |\n");
     write_advice_report(advice_dir, filename, "-----------------+------+-------+------+----------------------+-------------------------------+-----------------------+\n");

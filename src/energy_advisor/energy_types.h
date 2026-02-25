@@ -9,10 +9,13 @@
 
 typedef enum
 {
-    ENERGY_IDLE = 0,
-    ENERGY_SELL,
-    ENERGY_USE,
-    ENERGY_CHARGE  
+    CHARGE_FROM_GRID = 0,
+    CHARGE_FROM_SOURCE,
+    CONSUME_FROM_GRID,
+    CONSUME_FROM_SOURCE,
+    CONSUME_FROM_BATTERY,
+    SELL_FROM_BATTERY,
+    SELL_FROM_SOURCE
 } Energy_Action;
 
 typedef enum
@@ -23,6 +26,7 @@ typedef enum
 
 typedef enum
 {
+    // Not using these now, but may implement them again later
     PROD_NONE,
     PROD_LOW,
     PROD_MEDIUM,
@@ -31,6 +35,7 @@ typedef enum
 
 typedef enum
 {
+    // Not using these now, but may implement them again later
     PRICE_LOW,
     PRICE_MEDIUM,
     PRICE_HIGH
