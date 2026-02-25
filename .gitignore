@@ -67,3 +67,5 @@ data/*
 # other
 EnergySaverDeluxe.make
 Makefile
+logfolder
+logfolder/*

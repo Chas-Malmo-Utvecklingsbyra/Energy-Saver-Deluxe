@@ -118,16 +118,22 @@ Energy_Status Energy_Advisor_Advice()
 
     char filename[64];
     snprintf(filename, sizeof(filename), "Energy_Advice_%04d-%02d-%02d.txt", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
+    printf("Advice filename: %s\n", filename);
     
     const char *advice_dir = "Energy_Advice_Reports";
     File_Helper_Create_Dir(advice_dir);
-    File_Helper_Create(advice_dir, filename);
-
+    int result = File_Helper_Create(advice_dir, filename);
+    printf("File create result: %d\n", result);
+    
     Logger energy_advisor_log = {0};
     char log_filename[64];
+    snprintf(log_filename, sizeof(log_filename), "Energy_Advice_Log.txt");
+    
+    printf("Log filename: %s\n", log_filename);
     Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
     if (weather.length == 0 || prices.length == 0)
     {
+        printf("Failed to load input data for Energy Advisor\n");
         Logger_Write(&energy_advisor_log, "%s" ,"Failed to load input data");
         return ENERGY_STATUS_DATA_MISSING;
     }

@@ -30,19 +30,22 @@ typedef struct
 
 void check_signal_http_server(int signal)
 {
-    printf("Got signal: %d\n", signal);
+    (void)signal;
+    //printf("Got signal: %d\n", signal);
     http_server_should_quit = true;
 }
 
 void check_signal_process_manager(int signal)
 {
-    printf("Process Manager received signal: %d\n", signal);
+    (void)signal;
+    //printf("Process Manager received signal: %d\n", signal);
     process_manager_should_quit = true;
 }
 
 void check_signal_energy_advisor(int signal)
 {
-    printf("Energy Advisor received signal: %d\n", signal);
+    (void)signal;
+    //printf("Energy Advisor received signal: %d\n", signal);
     energy_advisor_should_quit = true;
 }
 
@@ -169,6 +172,7 @@ int http_server_process(void *context)
     Logger_Write(&logger, "Disposing HTTP Server");
     HTTP_Server_Dispose(&http_server);
 
+    Logger_Dispose(&logger);
     return 0;
 }
 
@@ -233,7 +237,7 @@ int energy_advisor_start(void *context)
             Energy_Status status = Energy_Advisor_Advice();
             if (status != ENERGY_STATUS_OK)
             {
-                printf("Energy Advice data is missing\n");
+                printf("Energy Advice data is missing, error code: %d\n", status);
                 return -1;
             }
         }
@@ -247,7 +251,7 @@ int energy_advisor_start(void *context)
     return 0;
 }
 
-//TODO Test with execve to run a different binary as child process, http request service with args
+//TODO: FIX DATE IN ARGS FOR FETCHER, CURRENTLY HARDCODED TO TODAY, SHOULD BE DYNAMIC BASED ON REQUESTED DATE OR CURRENT DATE FOR TESTING
 int main(int argc, char **argv)
 {
     CLI cli;
@@ -335,7 +339,28 @@ int main(int argc, char **argv)
             char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
             parse_command_args(cmd_args_string, &args);
 
-            pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, fetcher_exec_path, fetcher_exec_path, args, false);
+            // change date in args to current date for fetcher commands that need it
+            for (int j = 0; args != NULL && args[j] != NULL; j++)
+            {
+                if (strcmp(args[j], "-u") == 0 && args[j + 1])
+                {
+                    if (strcmp(args[j + 1], "https://www.elprisetjustnu.se") != 0)
+                    {
+                        break;
+                    }
+                }
+                if (strcmp(args[j], "-r") == 0 && args[j + 1])
+                {
+                    time_t t = time(NULL);
+                    struct tm tm = *localtime(&t);
+                    char date_buffer[64];
+                    snprintf(date_buffer, sizeof(date_buffer), "/api/v1/prices/%04d/%02d-%02d_SE4.json", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+                    free(args[j + 1]);
+                    args[j + 1] = strdup(date_buffer);
+                }
+            }
+
+            pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, fetcher_exec_path, fetcher_exec_path, args, true);
 
             if (fetcher_pid < 0)
             {
