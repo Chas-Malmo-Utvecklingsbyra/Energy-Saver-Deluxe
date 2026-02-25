@@ -145,7 +145,6 @@ Energy_Status Energy_Advisor_Advice()
     char log_filename[64];
     snprintf(log_filename, sizeof(log_filename), "Energy_Advice_Log.txt");
     
-    printf("Log filename: %s\n", log_filename);
     Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
     if (weather.length == 0 || prices.length == 0)
     {
