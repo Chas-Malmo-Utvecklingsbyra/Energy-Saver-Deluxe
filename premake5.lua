@@ -21,6 +21,7 @@ project (PROJECT_NAME)
 
    files { "**.h", "**.c" }
    removefiles { "include/core/tests/**" }
+   removefiles { "client/**" }
 
    filter "configurations:Debug"
       defines { "DEBUG" }
@@ -30,11 +31,27 @@ project (PROJECT_NAME)
       defines { "NDEBUG" }
       optimize "On"
 
+    filter "options:type=client"
+      removefiles { "**.h", "**.c" }
+      files { "client/src/**.c", "client/src/**.h" }
+
 newaction {
-    trigger     = "run",
-    description = "Build and run the project on Ubuntu",
+    trigger     = "server",
+    description = "Build and run the server on Ubuntu",
     execute = function ()
+        os.execute("premake5 clean")
         os.execute("premake5 gmake")
+        os.execute("make")
+        os.execute("./" .. BUILD_DIR .. "bin/Debug/" .. PROJECT_NAME)
+    end
+}
+
+newaction {
+    trigger     = "client",
+    description = "Build and run the client on Ubuntu",
+    execute = function ()
+        os.execute("premake5 clean")
+        os.execute("premake5 gmake --type=client")
         os.execute("make")
         os.execute("./" .. BUILD_DIR .. "bin/Debug/" .. PROJECT_NAME)
     end
@@ -68,4 +85,15 @@ newaction {
         os.execute("valgrind --leak-check=yes ./" .. BUILD_DIR .. "bin/Debug/" .. PROJECT_NAME)
     end
 }
+
+newoption {
+    trigger = "type",
+    value = "whatever",
+    description = "Choose server or client",
+    allowed = {
+        { "client", "Client" },
+        { "server", "Server" }
+    }
+}
+
 -- valgrind --leak-check=yes $(BIN)
