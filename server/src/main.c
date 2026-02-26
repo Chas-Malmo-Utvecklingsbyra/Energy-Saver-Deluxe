@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <errno.h>
+#include <string.h>
+#include <time.h>
 
 #include "http/server/http_server.h"
 #include "logger/logger.h"
@@ -19,34 +21,53 @@
 
 #define ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS 60
 
-bool http_server_should_quit = false;
-bool process_manager_should_quit = false;
-bool energy_advisor_should_quit = false;
+static volatile sig_atomic_t http_server_should_quit = 0;
+static volatile sig_atomic_t process_manager_should_quit = 0;
+static volatile sig_atomic_t energy_advisor_should_quit = 0;
+static volatile sig_atomic_t *active_quit_flag = NULL;
 
 typedef struct
 {
     Logger *logger;
 } HTTP_Cool_Context;
 
-void check_signal_http_server(int signal)
+static void install_signal_handler(int signal, void (*handler)(int))
 {
-    (void)signal;
-    //printf("Got signal: %d\n", signal);
-    http_server_should_quit = true;
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;  // Don't use SA_RESTART - allow interruption of system calls
+
+    sigaction(signal, &sa, NULL);
 }
 
-void check_signal_process_manager(int signal)
+static void generic_quit_handler(int signal)
 {
     (void)signal;
-    //printf("Process Manager received signal: %d\n", signal);
-    process_manager_should_quit = true;
+    if (active_quit_flag != NULL)
+        *active_quit_flag = 1;
 }
 
-void check_signal_energy_advisor(int signal)
+void setup_http_server_signals(void)
 {
-    (void)signal;
-    //printf("Energy Advisor received signal: %d\n", signal);
-    energy_advisor_should_quit = true;
+    active_quit_flag = &http_server_should_quit;
+    install_signal_handler(SIGQUIT, generic_quit_handler);
+    install_signal_handler(SIGTERM, generic_quit_handler);
+}
+
+void setup_energy_advisor_signals(void)
+{
+    active_quit_flag = &energy_advisor_should_quit;
+    install_signal_handler(SIGQUIT, generic_quit_handler);
+    install_signal_handler(SIGTERM, generic_quit_handler);
+}
+
+void setup_process_manager_signals(void)
+{
+    active_quit_flag = &process_manager_should_quit;
+    install_signal_handler(SIGTERM, generic_quit_handler);
+    install_signal_handler(SIGINT, generic_quit_handler);
 }
 
 void help_callback(void)
@@ -140,17 +161,16 @@ static void free_args(char **args)
 // HTTP Server process entry point
 int http_server_process(void *context)
 {
-    HTTP_Cool_Context *cool_context = (HTTP_Cool_Context *)context;
+    (void)context;
 
     Logger logger = {0};
     Logger_Init(&logger, "HTTP-Server", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
 
-    signal(SIGQUIT, check_signal_http_server);
-    signal(SIGTERM, check_signal_http_server);
-    
+    setup_http_server_signals();
+
     HTTP_Server http_server;
 
-    if (HTTP_Server_Initialize(&http_server, 1024, cool_context) == false)
+    if (HTTP_Server_Initialize(&http_server, 1024, NULL) == false)
     {
         Logger_Write(&logger, "Server failed to initialize");
         return 1;
@@ -164,7 +184,7 @@ int http_server_process(void *context)
         return 2;
     }
 
-    while (http_server_should_quit == false)
+    while (http_server_should_quit == 0)
     {
         HTTP_Server_Work(&http_server);
     }
@@ -176,12 +196,11 @@ int http_server_process(void *context)
     return 0;
 }
 
-int energy_advisor_start(void *context)
-{   
+int energy_advisor_process(void *context)
+{
     (void)context;
 
-    signal(SIGQUIT, check_signal_energy_advisor);
-    signal(SIGTERM, check_signal_energy_advisor);
+    setup_energy_advisor_signals();
 
     Config_t *cfg = Config_Get_Instance(NULL);
 
@@ -191,7 +210,7 @@ int energy_advisor_start(void *context)
     bool first_file_exists = false;
     bool second_file_exists = false;
 
-    while(energy_advisor_should_quit == false)
+    while (energy_advisor_should_quit == 0)
     {
         for (size_t i = 0; i < fetcher_command_count; i++)
         {
@@ -201,7 +220,7 @@ int energy_advisor_start(void *context)
             parse_command_args(cmd_args_string, &args);
 
             for (int j = 0; args[j]; j++)
-            {   
+            {
                 if (strcmp(args[j], "-o") == 0 && args[j + 1])
                 {
                     directory = args[j + 1];
@@ -215,14 +234,14 @@ int energy_advisor_start(void *context)
 
             char full_path[128];
             snprintf(full_path, sizeof(full_path), "%s/%s", directory, filename);
-            
+
             if (File_Helper_File_Exists(full_path))
             {
                 if (i == 0)
                 {
                     first_file_exists = true;
                 }
-                else 
+                else
                 {
                     second_file_exists = true;
                 }
@@ -241,17 +260,175 @@ int energy_advisor_start(void *context)
                 return -1;
             }
         }
-        
+
         first_file_exists = false;
         second_file_exists = false;
 
         sleep(ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS);
     }
-    
+
     return 0;
 }
 
-//TODO: FIX DATE IN ARGS FOR FETCHER, CURRENTLY HARDCODED TO TODAY, SHOULD BE DYNAMIC BASED ON REQUESTED DATE OR CURRENT DATE FOR TESTING
+static int run_parent_loop(pid_t process_manager_pid)
+{
+    char buffer[32] = {0};
+    bool should_quit = false;
+    while (should_quit == false)
+    {
+        if (fgets(buffer, sizeof(buffer), stdin) == NULL)
+            continue;
+        if (strncmp(buffer, "q", 1) == 0)
+        {
+            // Send SIGTERM to child process - let child handle cleanup
+            if (kill(process_manager_pid, SIGTERM) == -1)
+            {
+                printf("Error: Did not correctly kill the process: %d\n", errno);
+                return -4;
+            }
+
+            int stat_loc;
+            waitpid(process_manager_pid, &stat_loc, 0);
+            printf("stat loc: %d\n", stat_loc);
+            should_quit = true;
+        }
+    }
+    printf("Goodbye, process done.\n");
+    return 0;
+}
+
+static int update_fetcher_args_date(char **args)
+{
+    for (int j = 0; args != NULL && args[j] != NULL; j++)
+    {
+        if (strcmp(args[j], "-u") == 0 && args[j + 1])
+        {
+            if (strcmp(args[j + 1], "https://www.elprisetjustnu.se") != 0)
+            {
+                return 0;
+            }
+        }
+        if (strcmp(args[j], "-r") == 0 && args[j + 1])
+        {
+            time_t t = time(NULL);
+            struct tm tm = *localtime(&t);
+            char date_buffer[64];
+            snprintf(date_buffer, sizeof(date_buffer), "/api/v1/prices/%04d/%02d-%02d_SE4.json", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+            free(args[j + 1]);
+            args[j + 1] = strdup(date_buffer);
+        }
+    }
+
+    return 0;
+}
+
+static int run_process_manager_child(ProcessManager *process_manager)
+{
+    setup_process_manager_signals();
+
+    Logger process_manager_logger = {0};
+    if (Logger_Init(&process_manager_logger, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE) != LOGGER_RESULT_OK)
+    {
+        printf("Failed to initialize logger for Process Manager\n");
+        return -1;
+    }
+    Logger_Write(&process_manager_logger, "%s", "Process Manager started");
+
+    if (!ProcessManager_Init(process_manager, &process_manager_logger))
+    {
+        Logger_Write(&process_manager_logger, "Failed to initialize Process Manager");
+        return -1;
+    }
+
+    pid_t server_pid = ProcessManager_Spawn(process_manager, "HTTP Server", http_server_process, NULL, false);
+
+    if (server_pid < 0)
+    {
+        Logger_Write(&process_manager_logger, "Failed to spawn HTTP Server process");
+        return -1;
+    }
+
+    Config_t *cfg = Config_Get_Instance("settings.json");
+    if (cfg == NULL)
+    {
+        Logger_Write(&process_manager_logger, "Failed to load configuration!");
+        exit(-1);
+    }
+
+    char *fetcher_exec_path = Config_Get_Field_Value_String(cfg, "fetcher_exec_path");
+    size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
+    pid_t fetcher_pid[fetcher_command_count];
+    char **args = NULL;
+
+    for (size_t i = 0; i < fetcher_command_count; i++)
+    {
+        char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
+        parse_command_args(cmd_args_string, &args);
+
+        update_fetcher_args_date(args);
+
+        fetcher_pid[i] = ProcessManager_SpawnByExecutable(process_manager, "Fetcher", fetcher_exec_path, args, true);
+
+        if (fetcher_pid[i] < 0)
+        {
+            Logger_Write(&process_manager_logger, "Failed to spawn fetcher process");
+            return -1;
+        }
+
+        if (args != NULL)
+            free_args(args);
+    }
+
+    pid_t energy_advisor_pid = ProcessManager_Spawn(process_manager, "Energy Advisor", energy_advisor_process, NULL, false);
+
+    if (energy_advisor_pid < 0)
+    {
+        Logger_Write(&process_manager_logger, "Failed to spawn Energy Advisor process");
+        return -1;
+    }
+
+    struct timespec ts;
+    ts.tv_sec = 1;
+    ts.tv_nsec = 0;
+
+    // Wait for child processes to finish or termination signal
+    while (process_manager_should_quit == 0)
+    {
+        for (size_t fetcher_index = 0; fetcher_index < fetcher_command_count; fetcher_index++)
+        {
+            pid_t pid = fetcher_pid[fetcher_index];
+            char buffer[256] = {0};
+            ssize_t bytes_read = ProcessManager_ReadFromChild(process_manager, pid, buffer, sizeof(buffer) - 1);
+            if (bytes_read > 0)
+            {
+                buffer[bytes_read] = '\0';
+                Logger_Write(&process_manager_logger, "Output from fetcher process: %s", buffer);
+                if (strcmp(buffer, "NEW_DATA") == 0)
+                {
+                    Logger_Write(&process_manager_logger, "Received NEW_DATA from fetcher process");
+                    ProcessManager_WriteToChild(process_manager, pid, "ACK", 4);
+                }
+            }
+        }
+        nanosleep(&ts, NULL);
+    }
+
+    Logger_Write(&process_manager_logger, "Process Manager shutting down...");
+    ProcessManager_TerminateAll(process_manager);
+
+    // Wait for all child processes to terminate
+    Logger_Write(&process_manager_logger, "Waiting for child processes to exit...");
+    int status;
+    while (wait(&status) > 0)
+    {
+        // Reap all child processes
+    }
+    Config_Instance_Dispose();
+    ProcessManager_Destroy(process_manager);
+    Logger_Dispose(&process_manager_logger);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     CLI cli;
@@ -273,132 +450,10 @@ int main(int argc, char **argv)
     pid_t process_manager_pid = fork();
 
     if (process_manager_pid > 0)
-    {
-        // Parent-case
-        char buffer[32] = {0};
-        bool should_quit = false;
-        while (should_quit == false)
-        {
-            fgets(buffer, sizeof(buffer), stdin);
-            if (strncmp(buffer, "q", 1) == 0)
-            {
-                // Send SIGTERM to child process - let child handle cleanup
-                if (kill(process_manager_pid, SIGTERM) == -1)
-                {
-                    printf("Error: Did not correctly kill the process: %d\n", errno);
-                    return -4;
-                }
-                
-                int stat_loc;
-                waitpid(process_manager_pid, &stat_loc, 0);
-                printf("stat loc: %d\n", stat_loc);
-                should_quit = true;
-            }
-        }
-        printf("Goodbye, process done.\n");
-    }
-    else if (process_manager_pid == 0)
-    {
-        // Child-case
-        signal(SIGTERM, check_signal_process_manager);
-        signal(SIGINT, check_signal_process_manager);
-        
-        Logger logger_process = {0};
-        Logger_Init(&logger_process, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
-        Logger_Write(&logger_process, "%s", "Process Manager started");
+        return run_parent_loop(process_manager_pid);
 
-        if (!ProcessManager_Init(&process_manager, &logger_process))
-        {
-            Logger_Write(&logger_process, "Failed to initialize Process Manager");
-            return -1;
-        }
-    
-        HTTP_Cool_Context cool_context = { .logger = &logger_process };
-        pid_t server_pid = ProcessManager_Spawn(&process_manager, "HTTP Server", http_server_process, &cool_context, false);
+    if (process_manager_pid == 0)
+        return run_process_manager_child(&process_manager);
 
-        if (server_pid < 0)
-        {
-            Logger_Write(&logger_process, "Failed to spawn HTTP Server process");
-            return -1;
-        }
-
-        Config_t *cfg = Config_Get_Instance("settings.json");
-        if (cfg == NULL)
-        {
-            Logger_Write(&logger_process,"Failed to load configuration!");
-            exit(-1);
-        }
-
-        char *fetcher_exec_path = Config_Get_Field_Value_String(cfg, "fetcher_exec_path");
-        size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
-        char **args = NULL;
-        
-        for (size_t i = 0; i < fetcher_command_count; i++)
-        {
-            char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
-            parse_command_args(cmd_args_string, &args);
-
-            // change date in args to current date for fetcher commands that need it
-            for (int j = 0; args != NULL && args[j] != NULL; j++)
-            {
-                if (strcmp(args[j], "-u") == 0 && args[j + 1])
-                {
-                    if (strcmp(args[j + 1], "https://www.elprisetjustnu.se") != 0)
-                    {
-                        break;
-                    }
-                }
-                if (strcmp(args[j], "-r") == 0 && args[j + 1])
-                {
-                    time_t t = time(NULL);
-                    struct tm tm = *localtime(&t);
-                    char date_buffer[64];                               // TODO (PL): Nice to have a setting for the different electric zones (SE1, SE2, SE3, SE4) - but not required
-                    snprintf(date_buffer, sizeof(date_buffer), "/api/v1/prices/%04d/%02d-%02d_SE4.json", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);     // TODO (PL): Implement a fix for getting the correct date when new data has arrived after 14:00 every day, now it will always call the same date regardless of the time, which is problematic if the program runs in the morning
-                    free(args[j + 1]);
-                    args[j + 1] = strdup(date_buffer);
-                }
-            }
-
-            pid_t fetcher_pid = ProcessManager_SpawnByExecutable(&process_manager, fetcher_exec_path, fetcher_exec_path, args, true);
-
-            if (fetcher_pid < 0)
-            {
-                Logger_Write(&logger_process, "Failed to spawn fetcher process");
-                return -1;
-            }
-
-            if (args != NULL)
-                free_args(args);
-        }
-
-        
-        pid_t energy_advisor_pid = ProcessManager_Spawn(&process_manager, "Energy Advisor", energy_advisor_start, NULL, false);
-
-        if (energy_advisor_pid < 0)
-        {
-            Logger_Write(&logger_process, "Failed to spawn Energy Advisor process");
-            return -1;
-        }
-
-        // Wait for child processes to finish or termination signal
-        while (!process_manager_should_quit)
-        {
-            sleep(1);
-        }
-
-        Logger_Write(&logger_process, "Process Manager shutting down...");
-        ProcessManager_TerminateAll(&process_manager);
-        
-        // Wait for all child processes to terminate
-        Logger_Write(&logger_process, "Waiting for child processes to exit...");
-        int status;
-        while (wait(&status) > 0)
-        {
-            // Reap all child processes
-        }
-        Config_Instance_Dispose();
-        ProcessManager_Destroy(&process_manager);
-        Logger_Dispose(&logger_process);
-    }
     return 0;
 }
