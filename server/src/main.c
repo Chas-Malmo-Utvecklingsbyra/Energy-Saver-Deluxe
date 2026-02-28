@@ -254,7 +254,7 @@ int energy_advisor_start(void *context)
 //TODO: FIX DATE IN ARGS FOR FETCHER, CURRENTLY HARDCODED TO TODAY, SHOULD BE DYNAMIC BASED ON REQUESTED DATE OR CURRENT DATE FOR TESTING
 int main(int argc, char **argv)
 {
-    CLI cli;
+    CLI cli = {0};
     int port_argument_data = 0;
     char test_string[128];
     memset(test_string, 0, sizeof(test_string));
