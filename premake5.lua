@@ -34,7 +34,7 @@ project (PROJECT_NAME)
 
     filter "options:type=client"
       language "C++"
-      cppdialect "C++14"
+      cppdialect "C++17"
       targetdir (BUILD_DIR .. "bin/%{cfg.buildcfg}/client")
       objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}")
       removefiles { "**.h", "**.c", "server/**" }
