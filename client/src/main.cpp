@@ -5,14 +5,15 @@
 int main() {
     Keyboard keyboard;
 
-    std::cout << "WIP Menu: (Press '1' to exit!)\n";
+    std::cout << "WIP Menu: (Press '0' to exit!)\n";
 
-    keyboard.Read([](char ch) 
+    keyboard.Read([](Keyboard_Code ch) 
     {
-        std::cout << "CHAR: " << ch << " | " << " CODE: " << (int)ch << "\n";
+        //std::cout << "CHAR: " << ch << " | " << " CODE: " << (int)ch << "\n";
 
-        if (ch == '1')
+        if (ch == Keyboard_Code::ZERO)
         {
+            std::cout << "Exiting!\n";
             return false;
         }
 
