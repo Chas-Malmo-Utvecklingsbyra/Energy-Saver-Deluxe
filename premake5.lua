@@ -1,6 +1,7 @@
 
 local PROJECT_NAME = "EnergySaverDeluxe"
 local BUILD_DIR = "build/"
+local CLIENT_OR_SERVER = "/server/"
 
 -- premake5.lua
 workspace (PROJECT_NAME)
@@ -11,8 +12,8 @@ project (PROJECT_NAME)
    language "C"
    cdialect "C99"
 
-   targetdir (BUILD_DIR .. "bin/%{cfg.buildcfg}")
-   objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}")
+   targetdir (BUILD_DIR .. "bin/%{cfg.buildcfg}/server")
+   objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}/server")
 
    buildoptions { "-Wall", "-Wextra", "-Werror", "-Wpedantic" }
    links { "pthread", "curl" }
@@ -32,17 +33,20 @@ project (PROJECT_NAME)
       optimize "On"
 
     filter "options:type=client"
-      removefiles { "**.h", "**.c" }
-      files { "client/src/**.c", "client/src/**.h" }
+      language "C++"
+      cppdialect "C++17"
+      targetdir (BUILD_DIR .. "bin/%{cfg.buildcfg}/client")
+      objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}")
+      removefiles { "**.h", "**.c", "server/**" }
+      files { "client/src/**.cpp", "client/src/**.h" }
 
 newaction {
     trigger     = "server",
     description = "Build and run the server on Ubuntu",
     execute = function ()
-        os.execute("premake5 clean")
         os.execute("premake5 gmake")
         os.execute("make")
-        os.execute("./" .. BUILD_DIR .. "bin/Debug/" .. PROJECT_NAME)
+        os.execute("./" .. BUILD_DIR .. "bin/Debug/server/" .. PROJECT_NAME)
     end
 }
 
@@ -50,10 +54,10 @@ newaction {
     trigger     = "client",
     description = "Build and run the client on Ubuntu",
     execute = function ()
-        os.execute("premake5 clean")
+        CLIENT_OR_SERVER = "/client/"
         os.execute("premake5 gmake --type=client")
         os.execute("make")
-        os.execute("./" .. BUILD_DIR .. "bin/Debug/" .. PROJECT_NAME)
+        os.execute("./" .. BUILD_DIR .. "bin/Debug/client/" .. PROJECT_NAME)
     end
 }
 
@@ -82,7 +86,7 @@ newaction {
     execute = function ()
         os.execute("premake5 gmake")
         os.execute("make")
-        os.execute("valgrind --leak-check=yes ./" .. BUILD_DIR .. "bin/Debug/" .. PROJECT_NAME)
+        os.execute("valgrind --leak-check=yes ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME)
     end
 }
 
