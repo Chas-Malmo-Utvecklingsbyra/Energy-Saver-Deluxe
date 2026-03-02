@@ -33,13 +33,29 @@ Energy_Status Energy_Advisor_Advice()
     Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
     if (weather.length == 0 || prices.length == 0)
     {
-        Logger_Write(&energy_advisor_log, "%s" ,"Failed to load input data");
+        Logger_Write(&energy_advisor_log, "Failed to load input data");
+
+        Logger_Dispose(&energy_advisor_log);
+        OpenMeteo_Destroy(&weather);
+        Spotprice_Destroy(&prices);
+        
         return ENERGY_STATUS_DATA_MISSING;
     }
 
-    int count = weather.length < prices.length ? weather.length : prices.length;
+    int count = prices.length;
 
     float *price_buffer = malloc(sizeof(float) * count);
+    if (!price_buffer)
+    {
+        Logger_Write(&energy_advisor_log, "Out of memory!");
+
+        Logger_Dispose(&energy_advisor_log);
+        OpenMeteo_Destroy(&weather);
+        Spotprice_Destroy(&prices);
+        
+        return ENERGY_STATUS_ERROR;
+    }
+
     int i;
     for (i = 0; i < count; i++)
     {
@@ -48,8 +64,8 @@ Energy_Status Energy_Advisor_Advice()
 
     qsort(price_buffer, count, sizeof(float), compare_price);
 
-    float low_price = price_buffer[(int)(count * 0.25f)];
-    float high_price = price_buffer[(int)(count * 0.75f)];
+    float low_price = price_buffer[(int)((count - 1) * 0.25f)];
+    float high_price = price_buffer[(int)((count - 1) * 0.75f)];
 
     free(price_buffer);
 
@@ -65,21 +81,30 @@ Energy_Status Energy_Advisor_Advice()
         if (weather_time->tm_year == report_date.tm_year && weather_time->tm_mon == report_date.tm_mon && weather_time->tm_mday == report_date.tm_mday)
         {
             if (weather_start == -1)
-            {
                 weather_start = i;
-            }
+
             weather_count++;
         }
     }
 
-    if (weather_count < 0)
+    if (weather_start == -1)
     {
-        Logger_Write(&energy_advisor_log, "%s", "Failed to get weather data for requested date");
+        Logger_Write(&energy_advisor_log, "Failed to get weather data for requested date");
+
+        Logger_Dispose(&energy_advisor_log);
+        OpenMeteo_Destroy(&weather);
+        Spotprice_Destroy(&prices);
+        
         return ENERGY_STATUS_DATA_MISSING;
     }
     if (weather_count < prices.length)
     {
-        Logger_Write(&energy_advisor_log, "%s", "Insufficient weather data (%d quarters) for %d price quarters", weather_count, prices.length);
+        Logger_Write(&energy_advisor_log, "Insufficient weather data (%d quarters) for %d price quarters", weather_count, prices.length);
+        
+        Logger_Dispose(&energy_advisor_log);
+        OpenMeteo_Destroy(&weather);
+        Spotprice_Destroy(&prices);
+        
         return ENERGY_STATUS_DATA_MISSING;
     }
 
@@ -95,6 +120,17 @@ Energy_Status Energy_Advisor_Advice()
     write_advice_report(advice_dir, filename, "========================================== High price threshold: %.3f SEK/kWh ========================================\n\n", high_price);    
 
     Quarter_Score *analysis = calloc(count, sizeof(Quarter_Score));
+    if (!analysis)
+    {
+        Logger_Write(&energy_advisor_log, "Out of memory (analysis)");
+
+        free(analysis);
+        Logger_Dispose(&energy_advisor_log);
+        OpenMeteo_Destroy(&weather);
+        Spotprice_Destroy(&prices);
+        
+        return ENERGY_STATUS_ERROR;
+    }
 
     for (i = 0; i < count; i++)
     {
@@ -112,6 +148,7 @@ Energy_Status Energy_Advisor_Advice()
         Energy_Flow_Advice advice = compute_advice(price_norm, sun_index, battery.soc);
         analysis[i].time = price_quarter->time_start;
         analysis[i].price = price_quarter->SEK_per_kWh;
+        analysis[i].price_norm = price_norm;
         analysis[i].sun = sun_index;
         analysis[i].advice = advice;
     }
@@ -183,15 +220,13 @@ Energy_Status Energy_Advisor_Advice()
             analysis[i].time.tm_min
         );
 
-        float price_norm = normalize_price(analysis[i].price, low_price, high_price);
-
         Energy_Flow_Advice *a = &analysis[i].advice;
 
         write_advice_report(advice_dir, filename,  
             "%s | %.2f | %.3f | %.2f | "
             " G: %.2f  | S: %.2f  | "
             "G: %.2f  | S: %.2f | B: %.2f  | "
-            "  B: %.2f  |  S: %.2f |\n", timebuf, analysis[i].sun, analysis[i].price, price_norm, a->charge_from_grid, a->charge_from_source, a->consume_from_grid, a->consume_from_source, a->consume_from_battery, a->sell_from_battery, a->sell_from_source);
+            "  B: %.2f  |  S: %.2f |\n", timebuf, analysis[i].sun, analysis[i].price, analysis[i].price_norm, a->charge_from_grid, a->charge_from_source, a->consume_from_grid, a->consume_from_source, a->consume_from_battery, a->sell_from_battery, a->sell_from_source);
 
     }
 

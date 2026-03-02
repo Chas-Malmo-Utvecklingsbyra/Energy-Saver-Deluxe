@@ -21,7 +21,8 @@ typedef enum
 typedef enum
 {
     ENERGY_STATUS_OK,
-    ENERGY_STATUS_DATA_MISSING
+    ENERGY_STATUS_ERROR,
+    ENERGY_STATUS_DATA_MISSING,
 } Energy_Status;
 
 typedef enum
@@ -65,6 +66,7 @@ typedef struct
 {
     struct tm time;
     float price;
+    float price_norm;
     float sun;
     Energy_Flow_Advice advice;
 } Quarter_Score;
