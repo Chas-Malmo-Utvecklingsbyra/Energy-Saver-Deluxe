@@ -13,22 +13,23 @@ HTTP_Status_Code root_handler_handle(QueryParameters_t *params, Route_Handler_Re
     (void)params;
     (void)response;
     (void)route_context;
-    HTTP_Cool_Context *cool_context = (HTTP_Cool_Context *)registry_context;
+    (void)registry_context; //temp
+    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, "<h1>Hello, World!</h1>");
 
     response->content_type = HTTP_CONTENT_TYPE_HTML;
-    Logger_Write(cool_context->logger, "%s", "Hii");
-    // TODO: Log here?
+    // Logger_Write(cool_context->logger, "%s", "Hii"); fix this, logger should not be null
 
-    return HTTP_STATUS_CODE_NOT_FOUND;
+    return response->status_code;
 }
 
+//TODO fix errors
 HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_Response_t *response, void *route_context, void *registry_context)
 {
     (void)params;
     // (void)response;
     (void)route_context;
-    
-    HTTP_Cool_Context *cool_context = (HTTP_Cool_Context *)registry_context;
+    (void)registry_context;
+    printf("Advice handler called!\n");
 
     char* response_data; // Energy_Advice json files are about 31000 characters
     size_t response_size = 0;
@@ -46,7 +47,6 @@ HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_
 
     Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, final_response);
 
-    Logger_Write(cool_context->logger, "%s", "Write stuff here I guess");
-
+    //Logger_Write(cool_context->logger, "%s", "Write stuff here I guess"); fix this, logger should not be null
     return response->status_code;
 }
