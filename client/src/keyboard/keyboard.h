@@ -7,6 +7,8 @@
 
 enum class Keyboard_Code
 {
+    ENTER = 10,
+
     ZERO = 48,
     ONE,
     TWO,
