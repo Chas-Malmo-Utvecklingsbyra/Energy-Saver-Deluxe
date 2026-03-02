@@ -16,7 +16,7 @@ project (PROJECT_NAME)
    objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}/server")
 
    buildoptions { "-Wall", "-Wextra", "-Werror", "-Wpedantic" }
-   links { "pthread", "curl" }
+   links { "pthread", "curl", "m" }
 
    includedirs { "include/core/" }
 
