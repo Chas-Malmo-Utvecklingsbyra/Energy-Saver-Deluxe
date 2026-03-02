@@ -36,8 +36,9 @@ project (PROJECT_NAME)
       cppdialect "C++14"
       targetdir (BUILD_DIR .. "bin/%{cfg.buildcfg}/client")
       objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}")
-      removefiles { "**.h", "**.c", "server/**" }
-      files { "client/src/**.cpp", "client/src/**.h" }
+      buildoptions { "-Wall", "-Wextra", "-Werror", "-Wpedantic" }
+      files { "**.c", "**.cpp", "**.h" }
+      removefiles { "server/**", "include/core/tests/**" }
 
 newaction {
     trigger     = "server",
