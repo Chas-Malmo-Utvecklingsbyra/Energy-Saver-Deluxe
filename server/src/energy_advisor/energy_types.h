@@ -43,6 +43,13 @@ typedef enum
 
 typedef struct
 {
+    int start;
+    int end;
+    float average_score;
+} Best_Time_Window;
+
+typedef struct
+{
     float charge_from_grid;
     float charge_from_source;
 
@@ -56,6 +63,14 @@ typedef struct
 
 typedef struct
 {
+    struct tm time;
+    float price;
+    float sun;
+    Energy_Flow_Advice advice;
+} Quarter_Score;
+
+typedef struct
+{
     float soc;
 } Battery_State;
 
@@ -64,6 +79,7 @@ typedef struct
     Energy_Production_Level prod_level;
     Energy_Price_Level price_level;
     Energy_Flow_Advice advice;
+    Quarter_Score score;
     Energy_Action action[SNAPSHOTS];
     Energy_Status status;
     time_t timestamps[SNAPSHOTS];

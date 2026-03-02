@@ -10,90 +10,6 @@
 #define ENERGY_ADVISOR_WEATHER_FILE     "data/weather/weather.json"
 #define ENERGY_ADVISOR_SPOTPRICE_FILE   "data/price/price.json"
 
-// Testing an implementation of colors to the textfile for easier readability for the user.
-#define GREEN   "\033[32m"
-#define YELLOW  "\033[33m"
-#define RED     "\033[31m"
-#define RESET   "\033[0m"
-
-static int compare_price(const void *a, const void *b)
-{
-    float pa = *(const float*)a;
-    float pb = *(const float*)b;
-    return (pa > pb) - (pa < pb);
-}
-
-static float normalize_price(float price, float low, float high)
-{
-    if (price <= low)   return 0.0f;
-    if (price >= high)  return 1.0f;
-
-    return (price - low) / (high - low);
-}
-
-static Energy_Flow_Advice compute_advice(float price_norm, float production, float battery_soc)
-{
-    Energy_Flow_Advice advice = {0};
-
-    advice.charge_from_grid = (1.0f - price_norm) * (1.0f - production) * (1.0f - battery_soc);
-    if (advice.charge_from_grid < 0.0)
-        advice.charge_from_grid = 0.0;
-    else if (advice.charge_from_grid > 1.0)
-        advice.charge_from_grid = 1.0;
-
-    advice.charge_from_source = production * (1.0f - battery_soc);
-    if (advice.charge_from_source < 0.0)
-        advice.charge_from_source = 0.0;
-    else if (advice.charge_from_source > 1.0)
-        advice.charge_from_source = 1.0;
-
-    advice.consume_from_grid = (1.0f - production) * (1.0f - battery_soc) * (1.0f - price_norm);
-    if (advice.consume_from_grid < 0.0)
-        advice.consume_from_grid = 0.0;
-    else if (advice.consume_from_grid > 1.0)
-        advice.consume_from_grid = 1.0;    
-
-    advice.consume_from_source = production;
-    if (advice.consume_from_source < 0.0)
-        advice.consume_from_source = 0.0;
-    else if (advice.consume_from_source > 1.0)
-        advice.consume_from_source = 1.0;
-
-    advice.consume_from_battery = battery_soc * price_norm;
-    if (advice.consume_from_battery < 0.0)
-        advice.consume_from_battery = 0.0;
-    else if (advice.consume_from_battery > 1.0)
-        advice.consume_from_battery = 1.0;
-    
-    advice.sell_from_battery = battery_soc * price_norm;
-    if (advice.sell_from_battery < 0.0)
-        advice.sell_from_battery = 0.0;
-    else if (advice.sell_from_battery > 1.0)
-        advice.sell_from_battery = 1.0;
-    
-    advice.sell_from_source = production * price_norm * battery_soc;
-    if (advice.sell_from_source < 0.0)
-        advice.sell_from_source = 0.0;
-    else if (advice.sell_from_source > 1.0)
-        advice.sell_from_source = 1.0;
-
-    return advice;
-}
-
-static void write_advice_report(const char *path, const char *filename, const char *fmt, ...)
-{
-    char buffer[4096];
-
-    va_list args;
-    va_start(args, fmt);
-    int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
-    va_end(args);
-
-    if (len <= 0)
-        return;
-
-    File_Helper_Write(path, filename, buffer, (size_t)len, FILE_HELPER_MODE_APPEND, false);
-}
 
 Energy_Status Energy_Advisor_Advice()
 {
@@ -178,44 +94,112 @@ Energy_Status Energy_Advisor_Advice()
     write_advice_report(advice_dir, filename, "========================================== Low price threshold: %.3f SEK/kWh =========================================\n", low_price);
     write_advice_report(advice_dir, filename, "========================================== High price threshold: %.3f SEK/kWh ========================================\n\n", high_price);    
 
-    write_advice_report(advice_dir, filename, "Time             | Sun  | Price | Norm | Charge (Grid/Source) | Consume (Grid/Source/Battery) | Sell (Battery/Source) |\n");
-    write_advice_report(advice_dir, filename, "-----------------+------+-------+------+----------------------+-------------------------------+-----------------------+\n");
+    Quarter_Score *analysis = calloc(count, sizeof(Quarter_Score));
 
     for (i = 0; i < count; i++)
     {
         OpenMeteo_Quarter *weather_quarter = &weather.quarters[weather_start + i];
-        Spotprice_Quarter *price_quarter = &prices.quarters[i];
-        
-
-        char timebuf[256];
-        snprintf(
-            timebuf, sizeof(timebuf), 
-            "%04d-%02d-%02d %02d:%02d", 
-            price_quarter->time_start.tm_year + 1900,
-            price_quarter->time_start.tm_mon + 1,
-            price_quarter->time_start.tm_mday,
-            price_quarter->time_start.tm_hour,
-            price_quarter->time_start.tm_min
-        );
+        Spotprice_Quarter *price_quarter = &prices.quarters[i];        
 
         double sun_index = (weather_quarter->direct_radiation + weather_quarter->diffuse_radiation) / 300.0;
+        if (sun_index > 1.0)
+            sun_index = 1.0;
+
         float price_norm = normalize_price(price_quarter->SEK_per_kWh, low_price, high_price);
 
         Battery_State battery = { .soc = 0.5f };
 
         Energy_Flow_Advice advice = compute_advice(price_norm, sun_index, battery.soc);
+        analysis[i].time = price_quarter->time_start;
+        analysis[i].price = price_quarter->SEK_per_kWh;
+        analysis[i].sun = sun_index;
+        analysis[i].advice = advice;
+    }
 
-        if (sun_index > 1.0)
-        {
-            sun_index = 1.0;
-        }
-        
+    Best_Time_Window best_charge = find_best_window(analysis, count, score_charge, 0.3f);       // Low threshold just to prove that it works
+    Best_Time_Window best_consume = find_best_window(analysis, count, score_consume, 0.6f);     // Average threshold
+    Best_Time_Window best_sell = find_best_window(analysis, count, score_sell, 0.6f);
+
+    write_advice_report(advice_dir, filename, "\n====================== SUMMARY FOR THE DAY ======================\n\n");
+
+    if (best_charge.start != -1)
+    {
+        write_advice_report(advice_dir, filename, "The best time to CHARGE from grid: %02d:%02d - %02d:%02d (avg %.2f)\n",
+        analysis[best_charge.start].time.tm_hour,
+        analysis[best_charge.start].time.tm_min,
+        analysis[best_charge.end].time.tm_hour,
+        analysis[best_charge.end].time.tm_min,
+        best_charge.average_score);
+    }
+    else if (best_charge.start == -1)
+    {
+        write_advice_report(advice_dir, filename, "The best time to CHARGE from grid: There is no window that fulfills the requirements today\n");
+    }
+
+    if (best_consume.start != -1)
+    {
+        write_advice_report(advice_dir, filename, "The best time to CONSUME solar: %02d:%02d - %02d:%02d (avg %.2f)\n",
+        analysis[best_consume.start].time.tm_hour,
+        analysis[best_consume.start].time.tm_min,
+        analysis[best_consume.end].time.tm_hour,
+        analysis[best_consume.end].time.tm_min,
+        best_consume.average_score);
+    }
+    else if (best_consume.start == -1)
+    {
+        write_advice_report(advice_dir, filename, "The best time to CONSUME solar: There is no window that fulfills the requirements today\n");
+    }
+
+    if (best_sell.start != -1)
+    {
+        write_advice_report(advice_dir, filename, "The best time to SELL energy: %02d:%02d - %02d:%02d (avg %.2f)\n",
+        analysis[best_sell.start].time.tm_hour,
+        analysis[best_sell.start].time.tm_min,
+        analysis[best_sell.end].time.tm_hour,
+        analysis[best_sell.end].time.tm_min,
+        best_sell.average_score);
+    }
+    else if (best_sell.start == -1)
+    {
+        write_advice_report(advice_dir, filename, "The best time to SELL energy: There is no window that fulfills the requirements today\n");
+    }
+
+    write_advice_report(advice_dir, filename, "\n=================================================================\n\n");
+    
+    write_advice_report(advice_dir, filename, "Time             | Sun  | Price | Norm | Charge (Grid/Source) | Consume (Grid/Source/Battery) | Sell (Battery/Source) |\n");
+    write_advice_report(advice_dir, filename, "-----------------+------+-------+------+----------------------+-------------------------------+-----------------------+\n");
+
+
+    for (i = 0; i < count; i++)
+    {
+        char timebuf[256];
+        snprintf(
+            timebuf, sizeof(timebuf), 
+            "%04d-%02d-%02d %02d:%02d", 
+            analysis[i].time.tm_year + 1900,
+            analysis[i].time.tm_mon + 1,
+            analysis[i].time.tm_mday,
+            analysis[i].time.tm_hour,
+            analysis[i].time.tm_min
+        );
+
+        float price_norm = normalize_price(analysis[i].price, low_price, high_price);
+
+        Energy_Flow_Advice *a = &analysis[i].advice;
+
         write_advice_report(advice_dir, filename,  
             "%s | %.2f | %.3f | %.2f | "
             " G: %.2f  | S: %.2f  | "
             "G: %.2f  | S: %.2f | B: %.2f  | "
-            "  B: %.2f  |  S: %.2f |\n", timebuf, sun_index, price_quarter->SEK_per_kWh, price_norm, advice.charge_from_grid, advice.charge_from_source, advice.consume_from_grid, advice.consume_from_source, advice.consume_from_battery, advice.sell_from_battery, advice.sell_from_source);
+            "  B: %.2f  |  S: %.2f |\n", timebuf, analysis[i].sun, analysis[i].price, price_norm, a->charge_from_grid, a->charge_from_source, a->consume_from_grid, a->consume_from_source, a->consume_from_battery, a->sell_from_battery, a->sell_from_source);
+
     }
+
+    char json_filename[64];
+    snprintf(json_filename, sizeof(json_filename), "Energy_Advice_%04d-%02d-%02d.json", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday);
+    write_json_report(advice_dir, json_filename, analysis, count, &report_date);
+
+    free(analysis);
 
     Logger_Dispose(&energy_advisor_log);
     OpenMeteo_Destroy(&weather);

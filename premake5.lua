@@ -1,6 +1,7 @@
 
 local PROJECT_NAME = "EnergySaverDeluxe"
 local BUILD_DIR = "build/"
+local CLIENT_OR_SERVER = "/server/"
 
 -- premake5.lua
 workspace (PROJECT_NAME)
@@ -15,7 +16,7 @@ project (PROJECT_NAME)
    objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}/server")
 
    buildoptions { "-Wall", "-Wextra", "-Werror", "-Wpedantic" }
-   links { "pthread", "curl" }
+   links { "pthread", "curl", "m" }
 
    includedirs { "include/core/" }
 
@@ -33,7 +34,7 @@ project (PROJECT_NAME)
 
     filter "options:type=client"
       language "C++"
-      cppdialect "C++14"
+      cppdialect "C++17"
       targetdir (BUILD_DIR .. "bin/%{cfg.buildcfg}/client")
       objdir (BUILD_DIR .. "obj/%{cfg.buildcfg}")
       buildoptions { "-Wall", "-Wextra", "-Werror", "-Wpedantic" }
@@ -54,6 +55,7 @@ newaction {
     trigger     = "client",
     description = "Build and run the client on Ubuntu",
     execute = function ()
+        CLIENT_OR_SERVER = "/client/"
         os.execute("premake5 gmake --type=client")
         os.execute("make")
         os.execute("./" .. BUILD_DIR .. "bin/Debug/client/" .. PROJECT_NAME)
@@ -85,7 +87,7 @@ newaction {
     execute = function ()
         os.execute("premake5 gmake")
         os.execute("make")
-        os.execute("valgrind --leak-check=yes ./" .. BUILD_DIR .. "bin/Debug/" .. PROJECT_NAME)
+        os.execute("valgrind --leak-check=yes ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME)
     end
 }
 
