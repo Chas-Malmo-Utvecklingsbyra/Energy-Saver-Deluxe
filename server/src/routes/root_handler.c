@@ -34,8 +34,15 @@ HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_
     char* response_data; // Energy_Advice json files are about 31000 characters
     size_t response_size = 0;
 
-    File_Helper_Read("../../../../Energy_Advice_Reports", "Energy_Advice_2026-03-02.json", &response_data, &response_size);
-    
+    File_Helper_Result result = File_Helper_Read("./Energy_Advice_Reports", "Energy_Advice_2026-03-02.json", &response_data, &response_size);
+    if (FILE_HELPER_RESULT_SUCCESS != result)
+    {
+        printf("RESULT WAS NOT CORRECT\r\n");
+        printf("Error code: %d\r\n", result);
+        return HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR;
+    }
+
+
     printf("[[[FILE_SIZE: %ld]]]", response_size);
 
     char final_response[response_size];
