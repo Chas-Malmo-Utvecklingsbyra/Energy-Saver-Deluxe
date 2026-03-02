@@ -1,4 +1,6 @@
 #include <iostream>
+#include "keyboard/keyboard.h"
+#include "menu/menu.h"
 
 extern "C"
 {
@@ -12,12 +14,15 @@ static void On_Received_Full_Message(HTTPClient *client){
     printf("%s", client->inbuffer);
 }
 
-int main()
+void Get_Weather_Report_Data()
 {
     HTTPClient client;
     
     if (HTTPClient_Initiate(&client, On_Received_Full_Message) != 0)
-        return -1;
+    {
+        std::cout << "Failed to Initiate HTTPClient" << "\n";
+        return;
+    }
 
     std::cout << "Hello, this is the client :)\n";
 
@@ -26,34 +31,28 @@ int main()
     while (HTTPClient_Work(&client) == false);
 
     HTTPClient_Dispose(&client);
-
-    return 0;
 }
 
-/* #include <iostream>
-
-#include "keyboard/keyboard.h"
-#include "menu/menu.h"
-
-void hello_print()
+void Ask_AI()
 {
-    std::cout << "print hello!\r\n";
+    std::cout << "Coming soon\n";
 }
 
-
-int main() {
+int main()
+{
     Keyboard keyboard;
     Menu menu;
-    menu.Add_Selection("Hello World!");
-    menu.Add_Selection("Johnny!", hello_print);
+    
+    menu.Add_Selection("Get Weather Report Data", Get_Weather_Report_Data);
+    menu.Add_Selection("Ask AI [Coming Soon]", Ask_AI);
 
     menu.Menu_Print();
 
-    keyboard.Read([&](Keyboard_Code ch) 
+    keyboard.Read([&](Keyboard_Code key) 
     {
         //std::cout << "CHAR: " << ch << " | " << " CODE: " << (int)ch << "\n";
 
-        if (ch == Keyboard_Code::ENTER)
+        if (key == Keyboard_Code::ENTER)
         {
             Selection *selected = menu.Get_Selection();
 
@@ -61,18 +60,18 @@ int main() {
                 selected->callback();
         }
 
-        if (ch == Keyboard_Code::ZERO)
+        if (key == Keyboard_Code::ZERO)
         {
             std::cout << "Exiting!\n";
             return false;
         }
 
-        if (ch == Keyboard_Code::ARROW_UP)
+        if (key == Keyboard_Code::ARROW_UP)
         {
             menu.Select_Up();
         }
 
-        if (ch == Keyboard_Code::ARROW_DOWN)
+        if (key == Keyboard_Code::ARROW_DOWN)
         {
             menu.Select_Down();
         }
@@ -81,4 +80,4 @@ int main() {
     });
 
     return 0;
-} */
+}
