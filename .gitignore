@@ -69,3 +69,4 @@ EnergySaverDeluxe.make
 Makefile
 logfolder
 logfolder/*
+*.code-workspace
