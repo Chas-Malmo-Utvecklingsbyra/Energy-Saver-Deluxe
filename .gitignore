@@ -70,3 +70,4 @@ Makefile
 logfolder
 logfolder/*
 *.code-workspace
+Energy_Advice_Reports/*

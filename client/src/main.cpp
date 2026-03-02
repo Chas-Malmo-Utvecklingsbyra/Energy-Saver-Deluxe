@@ -1,5 +1,37 @@
 #include <iostream>
 
+extern "C"
+{
+    #include "http/client/httpClient.h"
+}
+
+#define SERVER_ADDR "localhost:8080"
+#define TEST_PORT 8080
+
+static void On_Received_Full_Message(HTTPClient *client){
+    printf("%s", client->inbuffer);
+}
+
+int main()
+{
+    HTTPClient client;
+    
+    if (HTTPClient_Initiate(&client, On_Received_Full_Message) != 0)
+        return -1;
+
+    std::cout << "Hello, this is the client :)\n";
+
+    HTTPClient_GET(&client, SERVER_ADDR, "/advice");
+
+    while (HTTPClient_Work(&client) == false);
+
+    HTTPClient_Dispose(&client);
+
+    return 0;
+}
+
+/* #include <iostream>
+
 #include "keyboard/keyboard.h"
 #include "menu/menu.h"
 
@@ -37,4 +69,4 @@ int main() {
     });
 
     return 0;
-}
+} */
