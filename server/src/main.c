@@ -40,6 +40,8 @@ static void help_callback(void)
 
 int main(int argc, char **argv)
 {
+    printf("HELLO MAIN!\r\n");
+
     // Parse command line arguments
     CLI cli;
     int port_argument_data = 0;

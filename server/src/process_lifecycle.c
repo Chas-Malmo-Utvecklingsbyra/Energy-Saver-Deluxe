@@ -23,6 +23,7 @@
 
 int http_server_process(void *context)
 {
+    printf("Inside HTTP_SERVER_PROCESS!\r\n");
     (void)context;
 
     Logger logger = {0};
