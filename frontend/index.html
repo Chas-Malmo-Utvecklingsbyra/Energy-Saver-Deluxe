@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Troll Rain</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:black;
+    font-family:Arial, sans-serif;
+    position:relative;
+}
+
+/* Background text */
+.bg-text{
+    position:fixed;
+    top:45%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:6vw;
+    font-weight:bold;
+    color:rgba(255,255,255,0.08);
+    white-space:nowrap;
+    pointer-events:none;
+    user-select:none;
+    z-index:0;
+    text-align:center;
+    letter-spacing:0.1em;
+}
+
+/* smaller "Get API" */
+.get-api{
+    position:fixed;
+    top:55%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:2vw;
+    font-weight:bold;
+    color:rgba(255,255,255,0.5);
+    cursor:pointer;
+    z-index:0;
+    transition:0.3s;
+    text-decoration:none;
+}
+
+.get-api:hover{
+    color:#00ff00; /* green highlight */
+}
+
+/* troll rain */
+.troll{
+    position:fixed;
+    top:-100px;
+    width:48px;
+    pointer-events:none;
+    animation:fall linear forwards;
+    z-index:1;
+}
+
+@keyframes fall{
+    to{
+        transform:translateY(110vh) rotate(360deg);
+    }
+}
+
+/* lightning segments */
+.lightning{
+    position:fixed;
+    width:3px;
+    background:white;
+    box-shadow:0 0 8px white;
+    pointer-events:none;
+    z-index:1;
+}
+</style>
+</head>
+
+<body>
+
+<div class="bg-text">Malmö Utvecklingsbyrå</div>
+<a href="/advice" class="get-api">Get API</a>
+
+<script>
+
+/* troll rain */
+function createTroll(){
+    const troll = document.createElement("img");
+    troll.src = "https://cdn3.emoji.gg/emojis/6757_Sadge.png";
+    troll.className = "troll";
+    troll.style.left = Math.random() * window.innerWidth + "px";
+    troll.style.animationDuration = (3 + Math.random()*3) + "s";
+
+    // Change to trollface on hover of "Get API"
+    const getAPI = document.querySelector(".get-api");
+    getAPI.addEventListener("mouseenter", () => {
+        troll.src = "https://cdn3.emoji.gg/emojis/1636-happy-pepe.png";
+    });
+    getAPI.addEventListener("mouseleave", () => {
+        troll.src = "https://cdn3.emoji.gg/emojis/6757_Sadge.png";
+    });
+
+    document.body.appendChild(troll);
+    setTimeout(() => { troll.remove(); }, 6000);
+}
+
+setInterval(createTroll, 200);
+
+
+/* lightning bolts */
+function createLightning(){
+    let x = Math.random() * window.innerWidth;
+    let y = 0;
+    const segments = 10 + Math.floor(Math.random()*10);
+
+    for(let i=0;i<segments;i++){
+        const bolt = document.createElement("div");
+        bolt.className = "lightning";
+        const length = 20 + Math.random()*30;
+        const angle = (Math.random()*40 - 20);
+        bolt.style.left = x + "px";
+        bolt.style.top = y + "px";
+        bolt.style.height = length + "px";
+        bolt.style.transform = `rotate(${angle}deg)`;
+        document.body.appendChild(bolt);
+        y += length;
+        x += (Math.random()*40 - 20);
+        setTimeout(()=>{ bolt.remove(); },200);
+    }
+}
+
+function lightningLoop(){
+    createLightning();
+    setTimeout(lightningLoop, 2000 + Math.random()*3000);
+}
+
+lightningLoop();
+
+</script>
+
+</body>
+</html>

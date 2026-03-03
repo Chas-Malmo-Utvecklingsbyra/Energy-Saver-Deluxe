@@ -1,6 +1,7 @@
 #include "root_handler.h"
 #include "logger/logger.h"
 #include "file_helper/file_helper.h"
+#include "json/fileHelper/fileHelper.h"
 #include <time.h>
 
 typedef struct HTTP_Cool_Context HTTP_Cool_Context;
@@ -15,7 +16,13 @@ HTTP_Status_Code root_handler_handle(QueryParameters_t *params, Route_Handler_Re
     (void)response;
     (void)route_context;
     (void)registry_context; //temp
-    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, "<h1>Hello, World!</h1>");
+
+    char buffer[2046];
+    memset(buffer, 0, sizeof(buffer));
+
+    char* html = file_read_to_string("./frontend/index.html");
+
+    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, html, true);
 
     response->content_type = HTTP_CONTENT_TYPE_HTML;
     // Logger_Write(cool_context->logger, "%s", "Hii"); fix this, logger should not be null
@@ -56,7 +63,7 @@ HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_
     free(response_data);
     response_data = NULL;
 
-    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_JSON, final_response);
+    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_JSON, final_response, false);
 
     //Logger_Write(cool_context->logger, "%s", "Write stuff here I guess"); fix this, logger should not be null
     return response->status_code;
