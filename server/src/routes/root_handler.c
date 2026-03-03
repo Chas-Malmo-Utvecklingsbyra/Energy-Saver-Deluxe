@@ -1,6 +1,7 @@
 #include "root_handler.h"
 #include "logger/logger.h"
 #include "file_helper/file_helper.h"
+#include <time.h>
 
 typedef struct HTTP_Cool_Context HTTP_Cool_Context;
 struct HTTP_Cool_Context
@@ -34,16 +35,19 @@ HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_
     char* response_data; // Energy_Advice json files are about 31000 characters
     size_t response_size = 0;
 
-    File_Helper_Result result = File_Helper_Read("./Energy_Advice_Reports", "Energy_Advice_2026-03-03.json", &response_data, &response_size);
+    time_t current_time = time(NULL);
+    struct tm *time = localtime(&current_time);
+
+    char filename[64]; 
+    // TODO PL: Still has to be changed, because the data should cover the next coming day, but right now the json-file is the current date, so it works for now.
+    snprintf(filename, sizeof(filename), "Energy_Advice_%04d-%02d-%02d.json", time->tm_year + 1900, time->tm_mon + 1, time->tm_mday);
+    
+    File_Helper_Result result = File_Helper_Read("./Energy_Advice_Reports", filename, &response_data, &response_size);
     if (FILE_HELPER_RESULT_SUCCESS != result)
     {
-        printf("RESULT WAS NOT CORRECT\r\n");
         printf("Error code: %d\r\n", result);
         return HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR;
     }
-
-
-    printf("[[[FILE_SIZE: %ld]]]", response_size);
 
     char final_response[response_size];
 

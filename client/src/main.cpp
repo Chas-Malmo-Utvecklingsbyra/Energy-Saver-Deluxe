@@ -7,7 +7,7 @@ extern "C"
     #include "http/client/httpClient.h"
 }
 
-#define SERVER_ADDR "localhost:8080"
+#define SERVER_ADDR "localhost"
 #define TEST_PORT 8080
 
 static void On_Received_Full_Message(HTTPClient *client){
@@ -26,7 +26,7 @@ void Get_Weather_Report_Data()
 
     std::cout << "Hello, this is the client :)\n";
 
-    HTTPClient_GET(&client, SERVER_ADDR, "/advice");
+    HTTPClient_GET(&client, SERVER_ADDR, "/advice", TEST_PORT);
 
     while (HTTPClient_Work(&client) == false);
 
