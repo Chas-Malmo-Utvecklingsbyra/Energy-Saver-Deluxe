@@ -91,6 +91,60 @@ newaction {
     end
 }
 
+
+local function setup_config()
+    local settings_template = [[
+    {
+    "http_server_port": 8080,
+    "exec_fetcher_on_startup": true,
+    "run_as_daemon": false,
+    "fetcher_exec_path": "/bin/http-request-service",
+    "fetchers_commands_count": 2,
+    "fetchers_commands_args": [
+        "-i 60 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=52.52&longitude=13.41&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather.json",
+        "-i 60 -u 'https://www.elprisetjustnu.se' -r '/api/v1/prices/' -o %s/data/price -n price.json"
+        ]
+    }
+    ]]
+
+    local function getcwd()
+        local handle = io.popen("pwd")
+        local result = handle:read("*a")
+        handle:close()
+        return result:gsub("\n", "")
+    end
+
+    local file = io.open("settings.json", "w")
+    local settings = string.format(settings_template, getcwd(), getcwd())
+    file:write(settings)
+    file:close()
+end
+
+newaction {
+    trigger     = "install",
+    description = "Installs http-request-service and sets up the config file",
+    execute = function ()
+        os.execute("git clone --recurse-submodules https://github.com/Chas-Malmo-Utvecklingsbyra/http-request-service.git")
+        os.execute("cd http-request-service && premake5 build")
+        os.execute("sudo mv ./http-request-service/build/bin/Debug/http-request-service /bin/ && cd ..")
+        os.execute("rm -rf http-request-service")
+
+        setup_config()
+
+        print("Succesfully installed the dependencies!")
+    end
+}
+
+newaction {
+    trigger     = "uninstall",
+    description = "Uninstall http-request-service",
+    execute = function ()
+        os.execute("sudo rm /bin/http-request-service")
+
+        print("Succesfully uninstalled the program!")
+    end
+}
+
 newoption {
     trigger = "type",
     value = "whatever",
