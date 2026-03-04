@@ -87,26 +87,27 @@ void free_args(char **args)
     free(args);
 }
 
-int update_fetcher_args_date(char **args)
+int update_fetcher_args_date(char **args, char *out_date_str)
 {
-    for (int j = 0; args != NULL && args[j] != NULL; j++)
+    if (!args || !out_date_str)
+        return -1;
+        
+    for (int i = 0; args != NULL && args[i] != NULL; i++)
     {
-        if (strcmp(args[j], "-u") == 0 && args[j + 1])
-        {
-            if (strcmp(args[j + 1], "https://www.elprisetjustnu.se") != 0)
-            {
-                return 0;
-            }
-        }
-        if (strcmp(args[j], "-r") == 0 && args[j + 1])
+        if (strcmp(args[i], "-r") == 0 && args[i + 1])
         {
             time_t t = time(NULL);
             struct tm tm = *localtime(&t);
             char date_buffer[64];
-            snprintf(date_buffer, sizeof(date_buffer), "/api/v1/prices/%04d/%02d-%02d_SE4.json", 
-                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
-            free(args[j + 1]);
-            args[j + 1] = strdup(date_buffer);
+            char date_str[16];
+            
+            strftime(date_str, sizeof(date_str), "%Y-%m-%d", &tm);
+            strncpy(out_date_str, date_str, 16);
+
+            snprintf(date_buffer, sizeof(date_buffer), "/api/v1/prices/%04d/%02d-%02d_SE4.json",
+                         tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+            free(args[i + 1]);
+            args[i + 1] = strdup(date_buffer);
         }
     }
 

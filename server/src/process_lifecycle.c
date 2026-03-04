@@ -21,6 +21,22 @@
 
 #define ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS 60
 
+/**
+ * @brief Helper function to check if a given date string (YYYY-MM-DD) matches today's date.
+ * @param logger Pointer to a Logger instance for logging.
+ * @param date_str Date string to compare in the format "YYYY-MM-DD".
+ * @return true if the date string matches today's date, false otherwise.
+ */
+static bool is_date_today(const char *date_str)
+{
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char today_str[16];
+    strftime(today_str, sizeof(today_str), "%Y-%m-%d", &tm);
+    
+    return strcmp(date_str, today_str) == 0;
+}
+
 int http_server_process(void *context)
 {
     (void)context;
@@ -34,7 +50,7 @@ int http_server_process(void *context)
 
     if (HTTP_Server_Initialize(&http_server, 1024, NULL) == false)
     {
-        Logger_Write(&logger, "Server failed to initialize");
+        LOG_WRITE(&logger, "Server failed to initialize");
         return 1;
     }
 
@@ -43,7 +59,7 @@ int http_server_process(void *context)
 
     if (HTTP_Server_Start(&http_server, 8080) == false)
     {
-        Logger_Write(&logger, "Server failed to start");
+        LOG_WRITE(&logger, "Server failed to start");
         return 2;
     }
 
@@ -52,7 +68,7 @@ int http_server_process(void *context)
         HTTP_Server_Work(&http_server);
     }
 
-    Logger_Write(&logger, "Disposing HTTP Server");
+    LOG_WRITE(&logger, "Disposing HTTP Server");
     HTTP_Server_Dispose(&http_server);
 
     Logger_Dispose(&logger);
@@ -146,11 +162,12 @@ int run_process_manager_child(ProcessManager *process_manager)
         printf("Failed to initialize logger for Process Manager\n");
         return -1;
     }
-    Logger_Write(&process_manager_logger, "%s", "Process Manager started");
+    
+    LOG_WRITE(&process_manager_logger, "%s", "Process Manager started");
 
     if (!ProcessManager_Init(process_manager, &process_manager_logger))
     {
-        Logger_Write(&process_manager_logger, "Failed to initialize Process Manager");
+        LOG_WRITE(&process_manager_logger, "Failed to initialize Process Manager");
         return -1;
     }
 
@@ -158,36 +175,46 @@ int run_process_manager_child(ProcessManager *process_manager)
 
     if (server_pid < 0)
     {
-        Logger_Write(&process_manager_logger, "Failed to spawn HTTP Server process");
+        LOG_WRITE(&process_manager_logger, "Failed to spawn HTTP Server process");
         return -1;
     }
 
     Config_t *cfg = Config_Get_Instance("settings.json");
     if (cfg == NULL)
     {
-        Logger_Write(&process_manager_logger, "Failed to load configuration!");
+        LOG_WRITE(&process_manager_logger, "Failed to load configuration!");
         exit(-1);
     }
 
     char *fetcher_exec_path = Config_Get_Field_Value_String(cfg, "fetcher_exec_path");
     size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
     pid_t fetcher_pid[fetcher_command_count];
+    pid_t elprisetjustnu_pid = -1;
     char **args = NULL;
+    char date_str[16]; /* Fetcher date for checking if date has changed */
 
     for (size_t i = 0; i < fetcher_command_count; i++)
     {
         char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
+        
         parse_command_args(cmd_args_string, &args);
-
-        update_fetcher_args_date(args);
+        
+        bool is_elprisetjustnu = strstr(cmd_args_string, "elprisetjustnu") != NULL;
+        if (is_elprisetjustnu)
+        {
+            update_fetcher_args_date(args, date_str);
+        }
 
         fetcher_pid[i] = ProcessManager_SpawnByExecutable(process_manager, "Fetcher", fetcher_exec_path, args, true);
 
         if (fetcher_pid[i] < 0)
         {
-            Logger_Write(&process_manager_logger, "Failed to spawn fetcher process");
+            LOG_WRITE(&process_manager_logger, "Failed to spawn fetcher process");
             return -1;
         }
+
+        if (is_elprisetjustnu)
+            elprisetjustnu_pid = fetcher_pid[i];
 
         if (args != NULL)
             free_args(args);
@@ -197,7 +224,7 @@ int run_process_manager_child(ProcessManager *process_manager)
 
     if (energy_advisor_pid < 0)
     {
-        Logger_Write(&process_manager_logger, "Failed to spawn Energy Advisor process");
+        LOG_WRITE(&process_manager_logger, "Failed to spawn Energy Advisor process");
         return -1;
     }
 
@@ -212,14 +239,35 @@ int run_process_manager_child(ProcessManager *process_manager)
         {
             pid_t pid = fetcher_pid[fetcher_index];
             char buffer[256] = {0};
+
+            if (fetcher_pid[fetcher_index] == elprisetjustnu_pid)
+            {
+                if (is_date_today(date_str) == false)
+                {
+                    // Date has changed, update fetcher args with new date
+                    for (size_t i = 0; i < fetcher_command_count; i++)
+                    {
+                        char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
+                        parse_command_args(cmd_args_string, &args);
+                        update_fetcher_args_date(args, date_str);
+                        
+                        fetcher_pid[fetcher_index] = ProcessManager_ResstartProcess(process_manager, elprisetjustnu_pid, "Fetcher", fetcher_exec_path, args, true);
+                        elprisetjustnu_pid = fetcher_pid[fetcher_index];
+
+                        if (args != NULL)
+                            free_args(args);
+                    }
+                }
+            }
+            
             ssize_t bytes_read = ProcessManager_ReadFromChild(process_manager, pid, buffer, sizeof(buffer) - 1);
             if (bytes_read > 0)
             {
                 buffer[bytes_read] = '\0';
-                Logger_Write(&process_manager_logger, "Output from fetcher process: %s", buffer);
-                if (strcmp(buffer, "NEW_DATA") == 0)
+                //LOG_WRITE(&process_manager_logger, "Output from fetcher process: %s", buffer);
+                if (strcmp(buffer, "NEW_DATA") == 0) // Example message from fetcher indicating new data is available
                 {
-                    Logger_Write(&process_manager_logger, "Received NEW_DATA from fetcher process");
+                    //LOG_WRITE(&process_manager_logger, "Received NEW_DATA from fetcher process");
                     ProcessManager_WriteToChild(process_manager, pid, "ACK", 4);
                 }
             }
@@ -227,11 +275,11 @@ int run_process_manager_child(ProcessManager *process_manager)
         nanosleep(&ts, NULL);
     }
 
-    Logger_Write(&process_manager_logger, "Process Manager shutting down...");
+    LOG_WRITE(&process_manager_logger, "Process Manager shutting down...");
     ProcessManager_TerminateAll(process_manager);
 
     // Wait for all child processes to terminate
-    Logger_Write(&process_manager_logger, "Waiting for child processes to exit...");
+    LOG_WRITE(&process_manager_logger, "Waiting for child processes to exit...");
     int status;
     while (wait(&status) > 0)
     {

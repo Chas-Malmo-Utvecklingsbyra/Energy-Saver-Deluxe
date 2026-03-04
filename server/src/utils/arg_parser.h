@@ -19,8 +19,9 @@ void free_args(char **args);
 /**
  * @brief Update fetcher args to use the current date for elprisetjustnu API
  * @param args The args array to update in-place
+ * @param out_date_str Output pointer to receive date string (YYYY-MM-DD)
  * @return 0 on success, -1 on error
  */
-int update_fetcher_args_date(char **args);
+int update_fetcher_args_date(char **args, char *out_date_str);
 
 #endif /* ARG_PARSER_H */
