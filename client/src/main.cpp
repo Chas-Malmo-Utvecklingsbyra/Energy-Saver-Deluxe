@@ -33,9 +33,16 @@ void Get_Weather_Report_Data()
     HTTPClient_Dispose(&client);
 }
 
-void Ask_AI()
+void Ask_AI(Keyboard& keyboard)
 {
-    std::cout << "Coming soon\n";
+    std::cout << "Input: ";
+
+    keyboard.Toggle();
+    std::string input;
+    std::getline(std::cin, input);
+    std::cout << input << std::endl;
+
+    keyboard.Toggle();
 }
 
 int main()
@@ -58,6 +65,8 @@ int main()
 
             if (selected->callback != nullptr)
                 selected->callback();
+            else if (selected->input_callback != nullptr)
+                selected->input_callback(keyboard);
         }
 
         if (key == Keyboard_Code::ZERO)

@@ -3,15 +3,20 @@
 #include <unistd.h>
 #include <iostream>
 
-Keyboard::Keyboard()
+void Keyboard::Start()
 {
-    this->force_close = false;
-
     struct termios raw;
     tcgetattr(STDIN_FILENO, &this->orig_termios);
     raw = *(&orig_termios);
     raw.c_lflag &= ~(ECHO | ICANON);
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
+
+Keyboard::Keyboard()
+{
+    this->force_close = false;
+    this->is_active = true;
+    Start();
 }
 
 void Keyboard::Read(std::function<bool(Keyboard_Code)> callback)
@@ -56,6 +61,16 @@ Keyboard::~Keyboard()
 {
     if (!force_close)
         Close();
+}
+
+void Keyboard::Toggle()
+{
+    if (is_active)
+        Close();
+    else
+        Start();
+    
+    is_active = !is_active;
 }
 
 std::ostream& operator<<(std::ostream& os, Keyboard_Code code)

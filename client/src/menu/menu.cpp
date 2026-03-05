@@ -9,7 +9,28 @@ Selection::Selection(std::string_view string, std::size_t index, std::function<v
     : string(string), index(index), callback(callback)
 {}
 
+Selection::Selection(std::string_view string, std::size_t index, std::function<void(Keyboard&)> callback)
+    : string(string), index(index), input_callback(callback)
+{}
+
 void Menu::Add_Selection(std::string_view selection, std::function<void(void)> callback)
+{
+    std::size_t selection_size = this->selections.size() + 1;
+    std::size_t new_index = 0;
+
+
+    new_index = selection_size - 1;
+    Selection select(selection, new_index, callback);
+
+    this->selections.emplace_back(select);
+
+    if (this->selected == nullptr)
+    {
+        this->selected = &this->selections.at(0);
+    }
+}
+
+void Menu::Add_Selection(std::string_view selection, std::function<void(Keyboard&)> callback)
 {
     std::size_t selection_size = this->selections.size() + 1;
     std::size_t new_index = 0;

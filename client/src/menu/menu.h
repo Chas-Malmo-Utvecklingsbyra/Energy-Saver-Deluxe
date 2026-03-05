@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include "../keyboard/keyboard.h"
 
 class Selection
 {
@@ -11,8 +12,10 @@ public:
     std::string_view string;
     std::size_t index;
     std::function<void(void)> callback;
+    std::function<void(Keyboard&)> input_callback;
 
     Selection(std::string_view string, std::size_t index, std::function<void(void)> callback);
+    Selection(std::string_view string, std::size_t index, std::function<void(Keyboard&)> callback);
 };
 
 class Menu
@@ -24,6 +27,7 @@ private:
 public:
     Menu();
     void Add_Selection(std::string_view selection, std::function<void(void)> callback = nullptr);
+    void Add_Selection(std::string_view selection, std::function<void(Keyboard&)> callback = nullptr);
     std::vector<Selection>& Get_Selections();
     void Menu_Print();
     void Select_Down();

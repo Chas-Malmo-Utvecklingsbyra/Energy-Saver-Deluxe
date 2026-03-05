@@ -86,12 +86,15 @@ class Keyboard
 private:
     struct termios orig_termios;
     bool force_close;
+    bool is_active;
     void Close();
+    void Start();
 
 public:
     ~Keyboard();
     Keyboard();
     void ForceClose();
+    void Toggle();
 
     // Reads pressed Keys from the keyboard
     void Read(std::function<bool(Keyboard_Code)> callback);
