@@ -121,7 +121,7 @@ float score_consume(const Quarter_Score *q)
     return q->advice.consume_from_source;
 }
 
-void tm_to_iso8601(const struct tm *t, char *buf, size_t size)
+void time_helper(const struct tm *t, char *buf, size_t size)
 {
     snprintf(buf, size, "%04d-%02d-%02dT%02d:%02d:00", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min);
 }
@@ -153,7 +153,7 @@ void write_json_report(const char *path, const char *filename, const Quarter_Sco
     for(i = 0; i < count; i++)
     {
         char timebuf[256];
-        tm_to_iso8601(&analysis[i].time, timebuf, sizeof(timebuf));
+        time_helper(&analysis[i].time, timebuf, sizeof(timebuf));
 
         snprintf(buf, sizeof(buf),
             "   {\n"
@@ -170,7 +170,7 @@ void write_json_report(const char *path, const char *filename, const Quarter_Sco
             timebuf,
             analysis[i].sun,
             analysis[i].price,
-            normalize_price(analysis[i].price, 0, 1),
+            analysis[i].price_norm,
             analysis[i].advice.charge_from_grid,
             analysis[i].advice.charge_from_source,
             analysis[i].advice.consume_from_grid,
