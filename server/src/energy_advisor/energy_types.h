@@ -27,20 +27,12 @@ typedef enum
 
 typedef enum
 {
-    // Not using these now, but may implement them again later
-    PROD_NONE,
-    PROD_LOW,
-    PROD_MEDIUM,
-    PROD_HIGH
-} Energy_Production_Level;
-
-typedef enum
-{
-    // Not using these now, but may implement them again later
-    PRICE_LOW,
-    PRICE_MEDIUM,
-    PRICE_HIGH
-} Energy_Price_Level;
+    ZONE_ONE,
+    ZONE_TWO,
+    ZONE_THREE,
+    ZONE_FOUR,
+    ZONE_COUNT
+} Energy_Zone;
 
 typedef struct
 {
@@ -78,8 +70,7 @@ typedef struct
 
 typedef struct
 {
-    Energy_Production_Level prod_level;
-    Energy_Price_Level price_level;
+    Energy_Zone zone;
     Energy_Flow_Advice advice;
     Quarter_Score score;
     Energy_Action action[SNAPSHOTS];

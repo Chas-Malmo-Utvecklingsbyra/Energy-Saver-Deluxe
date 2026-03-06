@@ -143,7 +143,7 @@ Energy_Status Energy_Advisor_Advice()
 
         float price_norm = normalize_price(price_quarter->SEK_per_kWh, low_price, high_price);
 
-        Battery_State battery = { .soc = 0.5f };
+        Battery_State battery = { .soc = 0.5f };            // Just as an example we have put the battery as half full
 
         Energy_Flow_Advice advice = compute_advice(price_norm, sun_index, battery.soc);
         analysis[i].time = price_quarter->time_start;
