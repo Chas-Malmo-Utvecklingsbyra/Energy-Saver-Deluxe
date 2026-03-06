@@ -74,7 +74,7 @@ void Ask_AI(Keyboard& keyboard)
     })";
     
     char *response = nullptr;
-    http_post(&h, "http://31.209.27.130:1234/api/v1/chat", (char*)data.c_str(), headers, &response);
+    http_post(&h, "http://free-virus.com/api/v1/chat", (char*)data.c_str(), headers, &response);
     http_dispose(&h, nullptr);
 
     //std::cout << response << std::endl;
