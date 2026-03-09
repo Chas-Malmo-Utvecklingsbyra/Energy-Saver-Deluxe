@@ -188,36 +188,54 @@ int run_process_manager_child(ProcessManager *process_manager)
 
     char *fetcher_exec_path = Config_Get_Field_Value_String(cfg, "fetcher_exec_path");
     size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
-    pid_t fetcher_pid[fetcher_command_count];
+    pid_t fetcher_pid[fetcher_command_count * 4];
+    size_t fetcher_pid_count = 0;
     pid_t elprisetjustnu_pid = -1;
     char **args = NULL;
     char date_str[16]; /* Fetcher date for checking if date has changed */
 
+    const char *zones[] = { "SE1", "SE2", "SE3", "SE4" };
+    const size_t zone_count = 4;
+
     for (size_t i = 0; i < fetcher_command_count; i++)
     {
         char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
-        
-        parse_command_args(cmd_args_string, &args);
-        
+
         bool is_elprisetjustnu = strstr(cmd_args_string, "elprisetjustnu") != NULL;
         if (is_elprisetjustnu)
         {
-            update_fetcher_args_date(args, date_str);
+            for (size_t z = 0; z < zone_count; z++)
+            {
+                parse_command_args(cmd_args_string, &args);
+
+                update_fetcher_args_date(args, date_str, zones[z]);
+
+                pid_t price_pid = ProcessManager_SpawnByExecutable(process_manager, "Fetcher", fetcher_exec_path, args, true);
+                if (price_pid < 0)
+                {
+                    LOG_WRITE(&process_manager_logger, "Failed to spawn fetcher process");
+                    return -1;
+                }
+
+                fetcher_pid[fetcher_pid_count++] = price_pid;
+        
+                if (args != NULL)
+                    free_args(args);
+            }
         }
-
-        fetcher_pid[i] = ProcessManager_SpawnByExecutable(process_manager, "Fetcher", fetcher_exec_path, args, true);
-
-        if (fetcher_pid[i] < 0)
+        else
         {
-            LOG_WRITE(&process_manager_logger, "Failed to spawn fetcher process");
-            return -1;
-        }
+            parse_command_args(cmd_args_string, &args);
 
-        if (is_elprisetjustnu)
-            elprisetjustnu_pid = fetcher_pid[i];
+            pid_t pid = ProcessManager_SpawnByExecutable(process_manager, "Fetcher", fetcher_exec_path, args, true);
 
-        if (args != NULL)
+            if (pid < 0)
+                return -1;
+            
+            fetcher_pid[fetcher_pid_count++] = pid;
+
             free_args(args);
+        }
     }
 
     pid_t energy_advisor_pid = ProcessManager_Spawn(process_manager, "Energy Advisor", energy_advisor_process, NULL, false);
@@ -235,7 +253,7 @@ int run_process_manager_child(ProcessManager *process_manager)
     // Wait for child processes to finish or termination signal
     while (process_manager_should_quit == 0)
     {
-        for (size_t fetcher_index = 0; fetcher_index < fetcher_command_count; fetcher_index++)
+        for (size_t fetcher_index = 0; fetcher_index < fetcher_pid_count; fetcher_index++)
         {
             pid_t pid = fetcher_pid[fetcher_index];
             char buffer[256] = {0};
@@ -249,7 +267,7 @@ int run_process_manager_child(ProcessManager *process_manager)
                     {
                         char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
                         parse_command_args(cmd_args_string, &args);
-                        update_fetcher_args_date(args, date_str);
+                        update_fetcher_args_date(args, date_str, zones[zone_count]);
                         
                         fetcher_pid[fetcher_index] = ProcessManager_ResstartProcess(process_manager, elprisetjustnu_pid, "Fetcher", fetcher_exec_path, args, true);
                         elprisetjustnu_pid = fetcher_pid[fetcher_index];

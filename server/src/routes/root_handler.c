@@ -43,11 +43,13 @@ HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_
     size_t response_size = 0;
 
     time_t current_time = time(NULL);
-    struct tm *time = localtime(&current_time);
+    struct tm tomorrow = *localtime(&current_time);
+    tomorrow.tm_mday += + 1;
+    mktime(&tomorrow);
 
     char filename[64]; 
     // TODO PL: Still has to be changed, because the data should cover the next coming day, but right now the json-file is the current date, so it works for now.
-    snprintf(filename, sizeof(filename), "Energy_Advice_%04d-%02d-%02d.json", time->tm_year + 1900, time->tm_mon + 1, time->tm_mday);
+    snprintf(filename, sizeof(filename), "Energy_Advice_SE4_%04d-%02d-%02d.json", tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
     
     File_Helper_Result result = File_Helper_Read("./Energy_Advice_Reports", filename, &response_data, &response_size);
     if (FILE_HELPER_RESULT_SUCCESS != result)

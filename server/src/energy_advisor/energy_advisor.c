@@ -7,238 +7,81 @@
 #include "logger/logger.h"
 #include "file_helper/file_helper.h"
 
-#define ENERGY_ADVISOR_WEATHER_FILE     "data/weather/weather.json"
-#define ENERGY_ADVISOR_SPOTPRICE_FILE   "data/price/price.json"
-
 
 Energy_Status Energy_Advisor_Advice()
 {
-    OpenMeteo_Data weather = OpenMeteo_ConvertJSONToData(ENERGY_ADVISOR_WEATHER_FILE);
-    Spotprice_Data prices = Spotprice_ConvertJSONToData(ENERGY_ADVISOR_SPOTPRICE_FILE);
-    
-    time_t current_time = time(NULL);
-    struct tm *tm_info = localtime(&current_time);
+    OpenMeteo_Data weather[ZONE_COUNT];
+    Spotprice_Data prices[ZONE_COUNT];
 
-    char filename[64];
-    snprintf(filename, sizeof(filename), "Energy_Advice_%04d-%02d-%02d.txt", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
-    
-    const char *advice_dir = "Energy_Advice_Reports";
-    File_Helper_Create_Dir(advice_dir);
-    File_Helper_Create(advice_dir, filename);
+    int z;
+    for (z = 0; z < ZONE_COUNT; z++)
+    {
+        weather[z] = OpenMeteo_ConvertJSONToData(zones[z].weather_file);
+        prices[z] = Spotprice_ConvertJSONToData(zones[z].price_file);
+    }
     
     Logger energy_advisor_log = {0};
-    char log_filename[64];
-    snprintf(log_filename, sizeof(log_filename), "Energy_Advice_Log.txt");
-    
+    const char log_filename[] = "Energy_Advice_Log.txt";
     Logger_Init(&energy_advisor_log, "ENERGY ADVISOR", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
-    if (weather.length == 0 || prices.length == 0)
+
+    const char *advice_dir = "Energy_Advice_Reports";
+    File_Helper_Create_Dir(advice_dir);
+
+    for (z = 0; z < ZONE_COUNT; z++)
     {
-        Logger_Write(&energy_advisor_log, "Failed to load input data");
-
-        Logger_Dispose(&energy_advisor_log);
-        OpenMeteo_Destroy(&weather);
-        Spotprice_Destroy(&prices);
-        
-        return ENERGY_STATUS_DATA_MISSING;
-    }
-
-    int count = prices.length;
-
-    float *price_buffer = malloc(sizeof(float) * count);
-    if (!price_buffer)
-    {
-        Logger_Write(&energy_advisor_log, "Out of memory!");
-
-        Logger_Dispose(&energy_advisor_log);
-        OpenMeteo_Destroy(&weather);
-        Spotprice_Destroy(&prices);
-        
-        return ENERGY_STATUS_ERROR;
-    }
-
-    int i;
-    for (i = 0; i < count; i++)
-    {
-        price_buffer[i] = prices.quarters[i].SEK_per_kWh;
-    }
-
-    qsort(price_buffer, count, sizeof(float), compare_price);
-
-    float low_price = price_buffer[(int)((count - 1) * 0.25f)];
-    float high_price = price_buffer[(int)((count - 1) * 0.75f)];
-
-    free(price_buffer);
-
-    struct tm report_date = prices.quarters[0].time_start;
-
-    int weather_start = -1;
-    int weather_count = 0;
-
-    for (i = 0; i < weather.length; i++)
-    {
-        struct tm *weather_time = &weather.quarters[i].time;
-
-        if (weather_time->tm_year == report_date.tm_year && weather_time->tm_mon == report_date.tm_mon && weather_time->tm_mday == report_date.tm_mday)
+        if (weather[z].length == 0 || prices[z].length == 0)
         {
-            if (weather_start == -1)
-                weather_start = i;
-
-            weather_count++;
+            Logger_Write(&energy_advisor_log, "Failed to load input data (zone: %s)", zones[z].zone);
+            continue;
         }
-    }
 
-    if (weather_start == -1)
-    {
-        Logger_Write(&energy_advisor_log, "Failed to get weather data for requested date");
+        struct tm report_date = prices[z].quarters[0].time_start;
 
-        Logger_Dispose(&energy_advisor_log);
-        OpenMeteo_Destroy(&weather);
-        Spotprice_Destroy(&prices);
+        time_t current_time = time(NULL);
+        struct tm tomorrow = *localtime(&current_time);
+        tomorrow.tm_mday += 1;
+        mktime(&tomorrow);
+
+        int weather_count;
+        int weather_start = Energy_Find_Weather_Start(&weather[z], &report_date, &weather_count);    
+        if (weather_start == -1)
+        {
+            Logger_Write(&energy_advisor_log, "Failed to get weather data for requested date (zone %s)", zones[z].zone);
+            continue;
+        }
+
+        int count;
+        float low_price, high_price;
+
+        Quarter_Score *analysis = Energy_Run_Analysis(&weather[z], &prices[z], &count, &low_price, &high_price, weather_start);
+        if (!analysis)
+        {
+            Logger_Write(&energy_advisor_log, "Out of memory for analysis (zone: %s)", zones[z].zone);
+            continue;
+        }
         
-        return ENERGY_STATUS_DATA_MISSING;
-    }
-    if (weather_count < prices.length)
-    {
-        Logger_Write(&energy_advisor_log, "Insufficient weather data (%d quarters) for %d price quarters", weather_count, prices.length);
+        char filename[64];
+        snprintf(filename, sizeof(filename), "Energy_Advice_%s_%04d-%02d-%02d.txt", zones[z].zone, tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
+        File_Helper_Create(advice_dir, filename);  
         
-        Logger_Dispose(&energy_advisor_log);
-        OpenMeteo_Destroy(&weather);
-        Spotprice_Destroy(&prices);
-        
-        return ENERGY_STATUS_DATA_MISSING;
-    }
+        write_advice_report(advice_dir, filename, "\n============================================= DATA IS VALID FOR ENERGY ZONE %s ============================================\n", zones[z].zone);
+        write_advice_report_header(advice_dir, filename, &tomorrow, low_price, high_price);
+        write_advice_report_summary(advice_dir, filename, analysis, count);
 
-    write_advice_report(advice_dir, filename, "\n============================================= ENERGY ADVICE FOR %04d-%02d-%02d ============================================\n\n", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday + 1);
-    write_advice_report(advice_dir, filename, "How to handle this information:\n");
-    write_advice_report(advice_dir, filename, "The numbers in the table below are graded between 0 and 1, and will help you to evaluate your choices with more care.\n");
-    write_advice_report(advice_dir, filename, "If the number is 1 or close to = A strong recommendation as this field is optimal for this quarter.\n");
-    write_advice_report(advice_dir, filename, "If the number is 0 or close to = A recommendation to AVOID these actions during this time as they are in the low range.\n");
-    write_advice_report(advice_dir, filename, "\nA gentle reminder that all of these values are only a recommendation based on the information gathered, not a definitive result.\n\n");
-    
-
-    write_advice_report(advice_dir, filename, "========================================== Low price threshold: %.3f SEK/kWh =========================================\n", low_price);
-    write_advice_report(advice_dir, filename, "========================================== High price threshold: %.3f SEK/kWh ========================================\n\n", high_price);    
-
-    Quarter_Score *analysis = calloc(count, sizeof(Quarter_Score));
-    if (!analysis)
-    {
-        Logger_Write(&energy_advisor_log, "Out of memory (analysis)");
+        char json_filename[64];
+        snprintf(json_filename, sizeof(json_filename), "Energy_Advice_%s_%04d-%02d-%02d.json", zones[z].zone, tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
+        Energy_Write_JSON_Report(advice_dir, json_filename, analysis, &tomorrow, count);
 
         free(analysis);
-        Logger_Dispose(&energy_advisor_log);
-        OpenMeteo_Destroy(&weather);
-        Spotprice_Destroy(&prices);
-        
-        return ENERGY_STATUS_ERROR;
-    }
+    }   
 
-    for (i = 0; i < count; i++)
+    for (z = 0; z < ZONE_COUNT; z++)
     {
-        OpenMeteo_Quarter *weather_quarter = &weather.quarters[weather_start + i];
-        Spotprice_Quarter *price_quarter = &prices.quarters[i];        
-
-        double sun_index = (weather_quarter->direct_radiation + weather_quarter->diffuse_radiation) / 300.0;
-        if (sun_index > 1.0)
-            sun_index = 1.0;
-
-        float price_norm = normalize_price(price_quarter->SEK_per_kWh, low_price, high_price);
-
-        Battery_State battery = { .soc = 0.5f };            // Just as an example we have put the battery as half full
-
-        Energy_Flow_Advice advice = compute_advice(price_norm, sun_index, battery.soc);
-        analysis[i].time = price_quarter->time_start;
-        analysis[i].price = price_quarter->SEK_per_kWh;
-        analysis[i].price_norm = price_norm;
-        analysis[i].sun = sun_index;
-        analysis[i].advice = advice;
+        OpenMeteo_Destroy(&weather[z]);
+        Spotprice_Destroy(&prices[z]);
     }
-
-    Best_Time_Window best_charge = find_best_window(analysis, count, score_charge, 0.3f);       // Low threshold just to prove that it works
-    Best_Time_Window best_consume = find_best_window(analysis, count, score_consume, 0.6f);     // Average threshold
-    Best_Time_Window best_sell = find_best_window(analysis, count, score_sell, 0.6f);
-
-    write_advice_report(advice_dir, filename, "\n====================== SUMMARY FOR THE DAY ======================\n\n");
-
-    if (best_charge.start != -1)
-    {
-        write_advice_report(advice_dir, filename, "The best time to CHARGE from grid: %02d:%02d - %02d:%02d (avg %.2f)\n",
-        analysis[best_charge.start].time.tm_hour,
-        analysis[best_charge.start].time.tm_min,
-        analysis[best_charge.end].time.tm_hour,
-        analysis[best_charge.end].time.tm_min,
-        best_charge.average_score);
-    }
-    else if (best_charge.start == -1)
-    {
-        write_advice_report(advice_dir, filename, "The best time to CHARGE from grid: There is no window that fulfills the requirements today\n");
-    }
-
-    if (best_consume.start != -1)
-    {
-        write_advice_report(advice_dir, filename, "The best time to CONSUME solar: %02d:%02d - %02d:%02d (avg %.2f)\n",
-        analysis[best_consume.start].time.tm_hour,
-        analysis[best_consume.start].time.tm_min,
-        analysis[best_consume.end].time.tm_hour,
-        analysis[best_consume.end].time.tm_min,
-        best_consume.average_score);
-    }
-    else if (best_consume.start == -1)
-    {
-        write_advice_report(advice_dir, filename, "The best time to CONSUME solar: There is no window that fulfills the requirements today\n");
-    }
-
-    if (best_sell.start != -1)
-    {
-        write_advice_report(advice_dir, filename, "The best time to SELL energy: %02d:%02d - %02d:%02d (avg %.2f)\n",
-        analysis[best_sell.start].time.tm_hour,
-        analysis[best_sell.start].time.tm_min,
-        analysis[best_sell.end].time.tm_hour,
-        analysis[best_sell.end].time.tm_min,
-        best_sell.average_score);
-    }
-    else if (best_sell.start == -1)
-    {
-        write_advice_report(advice_dir, filename, "The best time to SELL energy: There is no window that fulfills the requirements today\n");
-    }
-
-    write_advice_report(advice_dir, filename, "\n=================================================================\n\n");
-    
-    write_advice_report(advice_dir, filename, "Time             | Sun  | Price | Norm | Charge (Grid/Source) | Consume (Grid/Source/Battery) | Sell (Battery/Source) |\n");
-    write_advice_report(advice_dir, filename, "-----------------+------+-------+------+----------------------+-------------------------------+-----------------------+\n");
-
-
-    for (i = 0; i < count; i++)
-    {
-        char timebuf[256];
-        snprintf(
-            timebuf, sizeof(timebuf), 
-            "%04d-%02d-%02d %02d:%02d", 
-            analysis[i].time.tm_year + 1900,
-            analysis[i].time.tm_mon + 1,
-            analysis[i].time.tm_mday,
-            analysis[i].time.tm_hour,
-            analysis[i].time.tm_min
-        );
-
-        Energy_Flow_Advice *a = &analysis[i].advice;
-
-        write_advice_report(advice_dir, filename,  
-            "%s | %.2f | %.3f | %.2f | "
-            " G: %.2f  | S: %.2f  | "
-            "G: %.2f  | S: %.2f | B: %.2f  | "
-            "  B: %.2f  |  S: %.2f |\n", timebuf, analysis[i].sun, analysis[i].price, analysis[i].price_norm, a->charge_from_grid, a->charge_from_source, a->consume_from_grid, a->consume_from_source, a->consume_from_battery, a->sell_from_battery, a->sell_from_source);
-
-    }
-
-    char json_filename[64];
-    snprintf(json_filename, sizeof(json_filename), "Energy_Advice_%04d-%02d-%02d.json", tm_info->tm_year + 1900, tm_info->tm_mon + 1, tm_info->tm_mday);
-    write_json_report(advice_dir, json_filename, analysis, count, &report_date);
-
-    free(analysis);
 
     Logger_Dispose(&energy_advisor_log);
-    OpenMeteo_Destroy(&weather);
-    Spotprice_Destroy(&prices);
 
     return ENERGY_STATUS_OK;
 }

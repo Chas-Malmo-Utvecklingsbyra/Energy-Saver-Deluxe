@@ -22,6 +22,6 @@ void free_args(char **args);
  * @param out_date_str Output pointer to receive date string (YYYY-MM-DD)
  * @return 0 on success, -1 on error
  */
-int update_fetcher_args_date(char **args, char *out_date_str);
+int update_fetcher_args_date(char **args, char *out_date_str, const char *zone);
 
 #endif /* ARG_PARSER_H */

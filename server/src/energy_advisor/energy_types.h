@@ -3,20 +3,10 @@
 
 #include <time.h>
 
-#define QUARTERS        4
-#define MAX_HOURS       24
-#define SNAPSHOTS       (MAX_HOURS * QUARTERS)
-
-typedef enum
-{
-    CHARGE_FROM_GRID = 0,
-    CHARGE_FROM_SOURCE,
-    CONSUME_FROM_GRID,
-    CONSUME_FROM_SOURCE,
-    CONSUME_FROM_BATTERY,
-    SELL_FROM_BATTERY,
-    SELL_FROM_SOURCE
-} Energy_Action;
+#define ZONE_COUNT 4
+#define QUARTERS_PER_HOUR   4
+#define MAX_HOURS           24
+#define SNAPSHOTS           (MAX_HOURS * QUARTERS_PER_HOUR)
 
 typedef enum
 {
@@ -25,13 +15,11 @@ typedef enum
     ENERGY_STATUS_DATA_MISSING,
 } Energy_Status;
 
-typedef enum
+typedef struct
 {
-    ZONE_ONE,
-    ZONE_TWO,
-    ZONE_THREE,
-    ZONE_FOUR,
-    ZONE_COUNT
+    const char *zone;
+    const char *weather_file;
+    const char *price_file;
 } Energy_Zone;
 
 typedef struct
@@ -68,16 +56,12 @@ typedef struct
     float soc;
 } Battery_State;
 
-typedef struct
+static const Energy_Zone zones[ZONE_COUNT] = 
 {
-    Energy_Zone zone;
-    Energy_Flow_Advice advice;
-    Quarter_Score score;
-    Energy_Action action[SNAPSHOTS];
-    Energy_Status status;
-    time_t timestamps[SNAPSHOTS];
-    FILE *fp;
-} Energy_Plan;
-
+    {"SE1", "data/weather/weather_SE1.json", "data/price/price_SE1.json"},
+    {"SE2", "data/weather/weather_SE2.json", "data/price/price_SE2.json"},
+    {"SE3", "data/weather/weather_SE3.json", "data/price/price_SE3.json"},
+    {"SE4", "data/weather/weather_SE4.json", "data/price/price_SE4.json"}
+};
 
 #endif
