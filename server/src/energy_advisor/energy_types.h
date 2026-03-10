@@ -31,6 +31,13 @@ typedef struct
 
 typedef struct
 {
+    Best_Time_Window charge;
+    Best_Time_Window consume;
+    Best_Time_Window sell;
+} Energy_Summary;
+
+typedef struct
+{
     float charge_from_grid;
     float charge_from_source;
 

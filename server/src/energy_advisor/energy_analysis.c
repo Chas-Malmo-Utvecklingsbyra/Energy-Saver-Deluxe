@@ -49,11 +49,8 @@ Best_Time_Window find_best_window(Quarter_Score *data, int count, float (*score_
         if (score >= threshold)
         {
             if (current_start == -1)
-            {
                 current_start = i;
-                sum = 0.0f;
-                len = 0;
-            }
+
             sum += score;
             len++;
         }
@@ -70,6 +67,8 @@ Best_Time_Window find_best_window(Quarter_Score *data, int count, float (*score_
                 }
             }
             current_start = -1;
+            sum = 0.0f;
+            len = 0;
         }
     }
 
@@ -199,11 +198,22 @@ void write_advice_report_header(const char *path, const char *filename, const st
                                             date->tm_year + 1900, date->tm_mon + 1, date->tm_mday + 1, low_price , high_price);
 }
 
-void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, int count)
+Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
 {
-    Best_Time_Window best_charge = find_best_window(analysis, count, score_charge, 0.3f);       // Low threshold just to prove that it works
-    Best_Time_Window best_consume = find_best_window(analysis, count, score_consume, 0.6f);     // Average threshold
-    Best_Time_Window best_sell = find_best_window(analysis, count, score_sell, 0.6f);
+    Energy_Summary summary;
+    
+    summary.charge = find_best_window(analysis, count, score_charge, 0.3f);         // Low threshold just to prove that it works
+    summary.consume = find_best_window(analysis, count, score_consume, 0.6f);       // Average threshold
+    summary.sell = find_best_window(analysis, count, score_sell, 0.6f);
+
+    return summary;
+}
+
+void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, Energy_Summary *summary, int count)
+{
+    Best_Time_Window best_charge = summary->charge;       
+    Best_Time_Window best_consume = summary->consume;
+    Best_Time_Window best_sell = summary->sell;
 
     write_advice_report(path, filename, "\n====================== SUMMARY FOR THE DAY ======================\n\n");
 
@@ -279,12 +289,40 @@ void write_advice_report_summary(const char *path, const char *filename, Quarter
     }
 }
 
-void Energy_Write_JSON_Report(const char *path, const char *filename, Quarter_Score *analysis, const struct tm *date, int count)
+void Energy_Write_JSON_Report(const char *path, const char *filename, Quarter_Score *analysis, const struct tm *date, Energy_Summary *summary, int count)
 {
     char buf[1024];
     File_Helper_Write(path, filename, "{\n", 2, FILE_HELPER_MODE_WRITE, true);
 
-    snprintf(buf, sizeof(buf), "  \"date\": \"%04d-%02d-%02d\",\n  \"quarters\": [\n", date->tm_year + 1900, date->tm_mon + 1, date->tm_mday);
+    snprintf(buf, sizeof(buf), 
+        "  \"date\": \"%04d-%02d-%02d\",\n"
+        "  \"summary\": {\n"
+        "    \"charge\": { \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f },\n"
+        "    \"consume\": { \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f },\n"
+        "    \"sell\": { \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f }\n"
+        "  },\n"
+        "  \"quarters\": [\n", 
+        date->tm_year + 1900, date->tm_mon + 1, date->tm_mday,
+
+        analysis[summary->charge.start].time.tm_hour,
+        analysis[summary->charge.start].time.tm_min,
+        analysis[summary->charge.end].time.tm_hour,
+        analysis[summary->charge.end].time.tm_min,
+        summary->charge.average_score,
+
+        analysis[summary->consume.start].time.tm_hour,
+        analysis[summary->consume.start].time.tm_min,
+        analysis[summary->consume.end].time.tm_hour,
+        analysis[summary->consume.end].time.tm_min,
+        summary->consume.average_score,
+
+        analysis[summary->sell.start].time.tm_hour,
+        analysis[summary->sell.start].time.tm_min,
+        analysis[summary->sell.end].time.tm_hour,
+        analysis[summary->sell.end].time.tm_min,
+        summary->sell.average_score
+    );
+
     File_Helper_Write(path, filename, buf, strlen(buf), FILE_HELPER_MODE_APPEND, false);
 
     size_t i;

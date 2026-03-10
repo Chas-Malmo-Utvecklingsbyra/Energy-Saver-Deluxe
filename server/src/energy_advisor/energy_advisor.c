@@ -59,6 +59,8 @@ Energy_Status Energy_Advisor_Advice()
             Logger_Write(&energy_advisor_log, "Out of memory for analysis (zone: %s)", zones[z].zone);
             continue;
         }
+
+        Energy_Summary summary = calculate_summary(analysis, count);
         
         char filename[64];
         snprintf(filename, sizeof(filename), "Energy_Advice_%s_%04d-%02d-%02d.txt", zones[z].zone, tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
@@ -66,11 +68,11 @@ Energy_Status Energy_Advisor_Advice()
         
         write_advice_report(advice_dir, filename, "\n============================================= DATA IS VALID FOR ENERGY ZONE %s ============================================\n", zones[z].zone);
         write_advice_report_header(advice_dir, filename, &tomorrow, low_price, high_price);
-        write_advice_report_summary(advice_dir, filename, analysis, count);
+        write_advice_report_summary(advice_dir, filename, analysis, &summary, count);
 
         char json_filename[64];
         snprintf(json_filename, sizeof(json_filename), "Energy_Advice_%s_%04d-%02d-%02d.json", zones[z].zone, tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
-        Energy_Write_JSON_Report(advice_dir, json_filename, analysis, &tomorrow, count);
+        Energy_Write_JSON_Report(advice_dir, json_filename, analysis, &tomorrow, &summary, count);
 
         free(analysis);
     }   

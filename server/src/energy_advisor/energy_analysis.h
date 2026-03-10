@@ -17,10 +17,12 @@ Best_Time_Window find_best_window(Quarter_Score *data, int count, float (*score_
 
 void write_advice_report_header(const char *path, const char *filename, const struct tm *date, float low_price, float high_price);
 
-void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, int count);
+Energy_Summary calculate_summary(Quarter_Score *analysis, int count);
+
+void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, Energy_Summary *summary, int count);
 
 void write_advice_report(const char *path, const char *filename, const char *fmt, ...);
 
-void Energy_Write_JSON_Report(const char *path, const char *filename, Quarter_Score *analysis, const struct tm *date, int count);
+void Energy_Write_JSON_Report(const char *path, const char *filename, Quarter_Score *analysis, const struct tm *date, Energy_Summary *summary, int count);
 
 #endif
