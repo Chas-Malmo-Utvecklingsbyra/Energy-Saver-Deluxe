@@ -41,6 +41,11 @@ project (PROJECT_NAME)
       files { "**.c", "**.cpp", "**.h" }
       removefiles { "server/**", "include/core/tests/**" }
 
+    filter "options:type=profile"
+        buildoptions { "-Wno-unused-result", "-pg", "-g", "-O1" }
+        linkoptions { "-pg" }
+        
+
 newaction {
     trigger     = "server",
     description = "Build and run the server on Ubuntu",
@@ -90,6 +95,19 @@ newaction {
         os.execute("valgrind --leak-check=yes ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME)
     end
 }
+
+newaction {
+    trigger     = "gprof",
+    description = "Use profile on Ubuntu",
+    execute = function ()
+        os.execute("premake5 gmake --type=profile")
+        os.execute("make")
+        os.execute("GMON_OUT_PREFIX=gmon ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME)
+        os.execute("gprof ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME .. " gmon.* > profile.txt")
+        os.execute("rm -r gmon.*")
+    end
+}
+
 
 
 local function setup_config()
@@ -155,7 +173,8 @@ newoption {
     description = "Choose server or client",
     allowed = {
         { "client", "Client" },
-        { "server", "Server" }
+        { "server", "Server" },
+        { "profile", "Profile" },
     }
 }
 
