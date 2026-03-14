@@ -111,6 +111,7 @@ bool isServerOnline(const std::string& url) {
     return (res == CURLE_OK);
 }
 
+
 int main()
 {
     Keyboard keyboard;
@@ -137,12 +138,13 @@ int main()
 
         if (key == Keyboard_Code::ENTER)
         {
-            Selection *selected = menu.Get_Selection();
+            std::vector<Selection>& selection_arr = menu.Get_Selections();
+            Selection& selected = selection_arr.at(menu.Get_SelectedIndex());
 
-            if (selected->callback != nullptr)
-                selected->callback();
-            else if (selected->input_callback != nullptr)
-                selected->input_callback(keyboard);
+            if (selected.callback != nullptr)
+                selected.callback();
+            else if (selected.input_callback != nullptr)
+                selected.input_callback(keyboard);
         }
 
         if (key == Keyboard_Code::ZERO)

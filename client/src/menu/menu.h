@@ -22,8 +22,7 @@ class Menu
 {
 private:
     std::vector<Selection> selections;
-    Selection *selected;
-
+    std::size_t selected_index;
 public:
     Menu();
     void Add_Selection(std::string_view selection, std::function<void(void)> callback = nullptr);
@@ -32,7 +31,7 @@ public:
     void Menu_Print();
     void Select_Down();
     void Select_Up();
-    Selection *Get_Selection();
+    std::size_t Get_SelectedIndex();
 };
 
 #endif

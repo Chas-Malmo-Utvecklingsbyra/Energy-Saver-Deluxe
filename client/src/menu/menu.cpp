@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <iostream>
 #include <thread>
-#include <unistd.h>
 
 Selection::Selection(std::string_view string, std::size_t index, std::function<void(void)> callback)
     : string(string), index(index), callback(callback)
@@ -18,16 +17,10 @@ void Menu::Add_Selection(std::string_view selection, std::function<void(void)> c
     std::size_t selection_size = this->selections.size() + 1;
     std::size_t new_index = 0;
 
-
     new_index = selection_size - 1;
     Selection select(selection, new_index, callback);
 
     this->selections.emplace_back(select);
-
-    if (this->selected == nullptr)
-    {
-        this->selected = &this->selections.at(0);
-    }
 }
 
 void Menu::Add_Selection(std::string_view selection, std::function<void(Keyboard&)> callback)
@@ -37,15 +30,12 @@ void Menu::Add_Selection(std::string_view selection, std::function<void(Keyboard
 
 
     new_index = selection_size - 1;
+
+    std::cout << new_index << std::endl;
+
     Selection select(selection, new_index, callback);
 
     this->selections.emplace_back(select);
-
-    if (this->selected == nullptr)
-    {
-        this->selected = &this->selections.at(0);
-    }
-
 }
 
 std::vector<Selection>& Menu::Get_Selections()
@@ -55,7 +45,7 @@ std::vector<Selection>& Menu::Get_Selections()
 
 Menu::Menu()
 {
-    this->selected = nullptr;
+    this->selected_index = 0;
 }
 
 void Menu::Menu_Print()
@@ -67,7 +57,7 @@ void Menu::Menu_Print()
 
     for (auto &selection : selections)
     {
-        if (selection.index == this->selected->index)
+        if (selection.index == this->selected_index)
         {
 
             std::cout << "\033[1;32m" << selection.string << "\033[0m\n";
@@ -82,23 +72,23 @@ void Menu::Menu_Print()
 
 void Menu::Select_Down()
 {
-    if (this->selected->index+1 >= selections.size())
+    if (this->selected_index+1 >= selections.size())
         return;
 
-    this->selected = &selections.at(this->selected->index + 1);
+    selected_index++;
     Menu_Print();
 }
 
 void Menu::Select_Up()
 {
-    if (this->selected->index == 0)
+    if (this->selected_index == 0)
         return;
 
-    this->selected = &selections.at(this->selected->index - 1);
+    this->selected_index--;
     Menu_Print();
 }
 
-Selection *Menu::Get_Selection()
+std::size_t Menu::Get_SelectedIndex()
 {
-    return this->selected;
+    return this->selected_index;
 }
