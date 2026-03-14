@@ -44,7 +44,10 @@ project (PROJECT_NAME)
     filter "options:type=profile"
         buildoptions { "-Wno-unused-result", "-pg", "-g", "-O1" }
         linkoptions { "-pg" }
-        
+
+    filter "options:type=perf"
+        buildoptions { "-Wno-unused-result", "-g", "-O2", "-fno-omit-frame-pointer" }
+     
 
 newaction {
     trigger     = "server",
@@ -105,6 +108,17 @@ newaction {
         os.execute("GMON_OUT_PREFIX=gmon ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME)
         os.execute("gprof ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME .. " gmon.* > profile.txt")
         os.execute("rm -r gmon.*")
+    end
+}
+
+
+newaction {
+    trigger     = "perf",
+    description = "Use perf profile on Linux",
+    execute = function ()
+        os.execute("premake5 gmake --type=perf")
+        os.execute("make")
+        os.execute("perf record -g -F 99 ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME)
     end
 }
 
@@ -175,6 +189,7 @@ newoption {
         { "client", "Client" },
         { "server", "Server" },
         { "profile", "Profile" },
+        { "perf", "Perf" },
     }
 }
 
