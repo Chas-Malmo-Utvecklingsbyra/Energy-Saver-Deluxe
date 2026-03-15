@@ -21,6 +21,7 @@
 #include "process_manager/process_manager.h"
 #include "parent_supervisor.h"
 #include "process_lifecycle.h"
+#include "benchmark/benchmark.h"
 
 /**
  * @brief CLI help callback
@@ -31,7 +32,6 @@ static void help_callback(void)
     printf("Usage: EnergySaverDeluxe [options]\n\n");
     printf("Options:\n");
     printf("  --port, -p <integer>  Server port (not yet implemented)\n");
-    printf("  --test, -t <string>   Test string (not yet implemented)\n");
     printf("  --help, -h            Show this help message\n");
     exit(0);
 }
@@ -41,13 +41,10 @@ static void help_callback(void)
 int main(int argc, char **argv)
 {
     // Parse command line arguments
-    CLI cli;
+    CLI cli = {0};
     int port_argument_data = 0;
-    char test_string[128];
-    memset(test_string, 0, sizeof(test_string));
 
     CLI_Argument_Add(&cli, "--port", "-p", Argument_Option_Integer, &port_argument_data);
-    CLI_Argument_Add(&cli, "--test", "-t", Argument_Option_String, test_string);
     CLI_Argument_Add_Callback(&cli, "--help", "-h", help_callback);
 
     if (!CLI_Parse(&cli, argc, argv))
