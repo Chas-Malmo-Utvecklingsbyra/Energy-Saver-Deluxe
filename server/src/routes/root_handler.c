@@ -48,7 +48,7 @@ HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_
     mktime(&tomorrow);
 
     char filename[64]; 
-    // TODO PL: Still has to be changed, because the data should cover the next coming day, but right now the json-file is the current date, so it works for now.
+    // TODO PL: Still has to be changed, because the data should cover the current day until the program fetches new information (ev around 16:15), but right now the json-file is the coming date all day, so it works for now.
     snprintf(filename, sizeof(filename), "Energy_Advice_SE4_%04d-%02d-%02d.json", tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
     
     File_Helper_Result result = File_Helper_Read("./Energy_Advice_Reports", filename, &response_data, &response_size);

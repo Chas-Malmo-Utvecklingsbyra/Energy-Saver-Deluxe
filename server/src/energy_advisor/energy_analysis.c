@@ -35,7 +35,7 @@ Energy_Flow_Advice compute_advice(float price_norm, float production, float batt
 
 Best_Time_Window find_best_window(Quarter_Score *data, int count, float (*score_fn)(const Quarter_Score *), float threshold)
 {
-    Best_Time_Window best = { -1, -1, 0.0f};
+    Best_Time_Window best = { -1, -1, 0.0f, false};
 
     int current_start = -1;
     float sum = 0.0f;
@@ -48,22 +48,23 @@ Best_Time_Window find_best_window(Quarter_Score *data, int count, float (*score_
 
         if (score >= threshold)
         {
-            if (current_start == -1)
+            if (current_start < 0)
                 current_start = i;
 
             sum += score;
             len++;
         }
-        else if (current_start != -1)
+        else if (current_start >= 0)
         {
             if (len >= MIN_WINDOW_QUARTERS)
             {
                 float avg = sum / len;
-                if (avg > best.average_score)
+                if (!best.found || avg > best.average_score)
                 {
                     best.start = current_start;
                     best.end = i - 1;
                     best.average_score = avg;
+                    best.found = true;
                 }
             }
             current_start = -1;
@@ -72,14 +73,15 @@ Best_Time_Window find_best_window(Quarter_Score *data, int count, float (*score_
         }
     }
 
-    if (current_start != -1 && len >= MIN_WINDOW_QUARTERS)
+    if (current_start >= 0 && len >= MIN_WINDOW_QUARTERS)
     {
         float avg = sum / len;
-        if (avg > best.average_score)
+        if (!best.found || avg > best.average_score)
         {
             best.start = current_start;
             best.end = count - 1;
             best.average_score = avg;
+            best.found = true;
         }
     }
 
@@ -294,33 +296,65 @@ void Energy_Write_JSON_Report(const char *path, const char *filename, Quarter_Sc
     char buf[1024];
     File_Helper_Write(path, filename, "{\n", 2, FILE_HELPER_MODE_WRITE, true);
 
+    char charge_buf[256];
+    char consume_buf[256];
+    char sell_buf[256];
+
+    if (!summary->charge.found || summary->charge.start >= count || summary->charge.end >= count)
+    {
+        snprintf(charge_buf, sizeof(charge_buf), "\"charge\": { \"found\": false }");
+    }
+    else
+    {
+        snprintf(charge_buf, sizeof(charge_buf), 
+            "\"charge\": { \"found\": true, \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f }", 
+            analysis[summary->charge.start].time.tm_hour,
+            analysis[summary->charge.start].time.tm_min,
+            analysis[summary->charge.end].time.tm_hour,
+            analysis[summary->charge.end].time.tm_min,
+            summary->charge.average_score);
+    }
+
+    if (!summary->consume.found || summary->consume.start >= count || summary->consume.end >= count)
+    {
+        snprintf(consume_buf, sizeof(consume_buf), "\"consume\": { \"found\": false }");
+    }
+    else
+    {
+        snprintf(consume_buf, sizeof(consume_buf), 
+            "\"consume\": { \"found\": true, \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f }",
+            analysis[summary->consume.start].time.tm_hour,
+            analysis[summary->consume.start].time.tm_min,
+            analysis[summary->consume.end].time.tm_hour,
+            analysis[summary->consume.end].time.tm_min,
+            summary->consume.average_score);        
+    }
+    
+    if (!summary->sell.found || summary->sell.start >= count || summary->sell.end >= count)
+    {
+        snprintf(sell_buf, sizeof(sell_buf), "\"sell\": { \"found\": false }");
+    }
+    else
+    {
+        snprintf(sell_buf, sizeof(sell_buf), 
+            "\"sell\": { \"found\": true, \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f }",
+            analysis[summary->sell.start].time.tm_hour,
+            analysis[summary->sell.start].time.tm_min,
+            analysis[summary->sell.end].time.tm_hour,
+            analysis[summary->sell.end].time.tm_min,
+            summary->sell.average_score);
+    }
+
+    
     snprintf(buf, sizeof(buf), 
         "  \"date\": \"%04d-%02d-%02d\",\n"
         "  \"summary\": {\n"
-        "    \"charge\": { \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f },\n"
-        "    \"consume\": { \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f },\n"
-        "    \"sell\": { \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f }\n"
+        "    %s,\n"
+        "    %s,\n"
+        "    %s\n"
         "  },\n"
         "  \"quarters\": [\n", 
-        date->tm_year + 1900, date->tm_mon + 1, date->tm_mday,
-
-        analysis[summary->charge.start].time.tm_hour,
-        analysis[summary->charge.start].time.tm_min,
-        analysis[summary->charge.end].time.tm_hour,
-        analysis[summary->charge.end].time.tm_min,
-        summary->charge.average_score,
-
-        analysis[summary->consume.start].time.tm_hour,
-        analysis[summary->consume.start].time.tm_min,
-        analysis[summary->consume.end].time.tm_hour,
-        analysis[summary->consume.end].time.tm_min,
-        summary->consume.average_score,
-
-        analysis[summary->sell.start].time.tm_hour,
-        analysis[summary->sell.start].time.tm_min,
-        analysis[summary->sell.end].time.tm_hour,
-        analysis[summary->sell.end].time.tm_min,
-        summary->sell.average_score
+        date->tm_year + 1900, date->tm_mon + 1, date->tm_mday, charge_buf, consume_buf, sell_buf
     );
 
     File_Helper_Write(path, filename, buf, strlen(buf), FILE_HELPER_MODE_APPEND, false);

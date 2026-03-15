@@ -2,6 +2,7 @@
 #define ENERGY_TYPES_H
 
 #include <time.h>
+#include <stdbool.h>
 
 #define ZONE_COUNT 4
 #define QUARTERS_PER_HOUR   4
@@ -27,6 +28,7 @@ typedef struct
     int start;
     int end;
     float average_score;
+    bool found;
 } Best_Time_Window;
 
 typedef struct
