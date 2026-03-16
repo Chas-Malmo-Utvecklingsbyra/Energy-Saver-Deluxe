@@ -38,7 +38,7 @@ void Get_Weather_Report_Data()
         return;
     }
 
-    std::cout << "Hello, this is the client :)\n";
+    std::cout << "Collecting Weather Data from Server...\n";
 
     HTTPClient_GET(&client, SERVER_ADDR, "/weather", TEST_PORT);
 
@@ -57,7 +57,7 @@ void Get_Spot_Price_Report_Data()
         return;
     }
 
-    std::cout << "Hello, this is the client :)\n";
+    std::cout << "Collecting Spot Price Data from Server...\n";
 
     HTTPClient_GET(&client, SERVER_ADDR, "/advice", TEST_PORT);
 
@@ -76,7 +76,7 @@ void Get_Energy_Summary()
         return;
     }
 
-    std::cout << "Hello, this is the client :)\n";
+    std::cout << "Collecting Energy Summary Data from Server...\n";
 
     HTTPClient_GET(&client, SERVER_ADDR, "/summary", TEST_PORT);
 
