@@ -171,9 +171,6 @@ void Ask_AI(Keyboard& keyboard)
 
     headers = curl_slist_append(headers, "Content-Type: application/json");
 
-
-    std::string prompt = "Tell me the top trending model on hugging face";
-
     std::string data =
     R"({
         "model": "openai/gpt-oss-20b",
