@@ -42,38 +42,45 @@ int http_server_process(void *context)
     (void)context;
 
     Logger logger = {0};
-    Logger_Init(&logger, "HTTP-Server", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
+    // Logger_Init(&logger, "HTTP-Server", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
+    Logger_Init(&logger, "HTTP-Server", "logfolder", "log.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT);
 
     setup_http_server_signals();
 
     HTTP_Server http_server;
 
+    LOG_WRITE(&logger, "Initializing HTTP server.");
     if (HTTP_Server_Initialize(&http_server, 1024, NULL) == false)
     {
         LOG_WRITE(&logger, "Server failed to initialize");
         return 1;
     }
-
+    
+    LOG_WRITE(&logger, "Registering routes.");
     HTTP_Server_Register_Route(&http_server, "/", HTTP_METHOD_GET, root_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/advice", HTTP_METHOD_GET, advice_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/weather", HTTP_METHOD_GET, weather_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/summary", HTTP_METHOD_GET, summary_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/summary.html", HTTP_METHOD_GET, summary_page_handler_handle, NULL);
-
+    
+    
+    LOG_WRITE(&logger, "Server starting.");
     if (HTTP_Server_Start(&http_server, 8080) == false)
     {
         LOG_WRITE(&logger, "Server failed to start");
         return 2;
     }
-
+    
+    LOG_WRITE(&logger, "Server working.");
     while (http_server_should_quit == 0)
     {
         HTTP_Server_Work(&http_server);
     }
 
-    LOG_WRITE(&logger, "Disposing HTTP Server");
+    LOG_WRITE(&logger, "Disposing HTTP Server.");
     HTTP_Server_Dispose(&http_server);
 
+    LOG_WRITE(&logger, "Disposing logger.");
     Logger_Dispose(&logger);
     return 0;
 }
@@ -160,7 +167,8 @@ int run_process_manager_child(ProcessManager *process_manager)
     setup_process_manager_signals();
 
     Logger process_manager_logger = {0};
-    if (Logger_Init(&process_manager_logger, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE) != LOGGER_RESULT_OK)
+    // if (Logger_Init(&process_manager_logger, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE) != LOGGER_RESULT_OK)
+    if (Logger_Init(&process_manager_logger, "Process Manager", "logfolder", "log.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT) != LOGGER_RESULT_OK)
     {
         printf("Failed to initialize logger for Process Manager\n");
         return -1;
@@ -296,7 +304,7 @@ int run_process_manager_child(ProcessManager *process_manager)
         nanosleep(&ts, NULL);
     }
 
-    LOG_WRITE(&process_manager_logger, "Process Manager shutting down...");
+    LOG_WRITE(&process_manager_logger, "Process Manager starting shutdown...");
     ProcessManager_TerminateAll(process_manager);
 
     // Wait for all child processes to terminate
@@ -308,6 +316,7 @@ int run_process_manager_child(ProcessManager *process_manager)
     }
     Config_Instance_Dispose();
     ProcessManager_Destroy(process_manager);
+    LOG_WRITE(&process_manager_logger, "%s", "Process Manager shutting down.");
     Logger_Dispose(&process_manager_logger);
     return 0;
 }
