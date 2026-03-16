@@ -234,7 +234,7 @@ Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
     return summary;
 }
 
-void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, Energy_Summary *summary, int count)
+void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, Energy_Summary *summary)
 {
     Best_Time_Window best_charge = summary->charge;       
     Best_Time_Window best_consume = summary->consume;
@@ -283,7 +283,10 @@ void write_advice_report_summary(const char *path, const char *filename, Quarter
     {
         write_advice_report(path, filename, "The best time to SELL energy: There is no window that fulfills the requirements today\n");
     }
+}
 
+void write_advice_report_remaining(const char *path, const char *filename, Quarter_Score *analysis, int count)
+{
      write_advice_report(path, filename, "\n=================================================================\n\n"
                                             "Time             | Sun  | Price | Norm | Charge (Grid/Source) | Consume (Grid/Source/Battery) | Sell (Battery/Source) |\n"
                                             "-----------------+------+-------+------+----------------------+-------------------------------+-----------------------+\n");

@@ -68,7 +68,16 @@ Energy_Status Energy_Advisor_Advice()
         
         write_advice_report(advice_dir, filename, "\n============================================= DATA IS VALID FOR ENERGY ZONE %s ============================================\n", zones[z].zone);
         write_advice_report_header(advice_dir, filename, &tomorrow, low_price, high_price);
-        write_advice_report_summary(advice_dir, filename, analysis, &summary, count);
+        write_advice_report_summary(advice_dir, filename, analysis, &summary);
+        write_advice_report_remaining(advice_dir, filename, analysis, count);
+
+        char summary_filename[64];
+        snprintf(summary_filename, sizeof(summary_filename), "Energy_Advice_Summary_%s_%04d-%02d-%02d.txt", zones[z].zone, tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
+        
+        const char *advice_summary_dir = "Energy_Advice_Report_Summary";
+        File_Helper_Create(advice_summary_dir, summary_filename);
+        File_Helper_Create_Dir(advice_summary_dir);
+        write_advice_report_summary(advice_summary_dir, summary_filename, analysis, &summary);
 
         char json_filename[64];
         snprintf(json_filename, sizeof(json_filename), "Energy_Advice_%s_%04d-%02d-%02d.json", zones[z].zone, tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);

@@ -50,6 +50,42 @@ body{
     color:#00ff00; /* green highlight */
 }
 
+.get-weather{
+    position:fixed;
+    top:58%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:2vw;
+    font-weight:bold;
+    color:rgba(255,255,255,0.5);
+    cursor:pointer;
+    z-index:0;
+    transition:0.3s;
+    text-decoration:none;
+}
+
+.get-weather:hover{
+    color:#ff00f2; /* pink highlight */
+}
+
+.get-summary{
+    position:fixed;
+    top:61%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:2vw;
+    font-weight:bold;
+    color:rgba(255,255,255,0.5);
+    cursor:pointer;
+    z-index:0;
+    transition:0.3s;
+    text-decoration:none;
+}
+
+.get-summary:hover{
+    color:#ff7300; /* orange highlight */
+}
+
 /* troll rain */
 .troll{
     position:fixed;
@@ -81,7 +117,9 @@ body{
 <body>
 
 <div class="bg-text">Malmö Utvecklingsbyrå</div>
-<a href="/advice" class="get-api">Get API</a>
+<a href="/advice" class="get-api">Get Spot Price Info</a>
+<a href="/weather" class="get-weather">Get Weather Prognosis</a>
+<a href="/summary" class="get-summary">Get Energy Summary</a>
 
 <script>
 

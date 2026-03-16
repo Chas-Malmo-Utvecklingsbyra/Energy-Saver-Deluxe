@@ -14,18 +14,40 @@ extern "C"
 #define SERVER_ADDR "localhost"
 #define TEST_PORT 8080
 
-static std::string http_response;
-
 static void On_Received_Full_Message(HTTPClient *client){
+    printf("%s", client->inbuffer);
+}
+
+static void On_Received_Weather_Data(HTTPClient *client)
+{
     printf("%s", client->inbuffer);
 }
 
 static void On_Received_Summary(HTTPClient *client)
 {
-    http_response = (char*)client->inbuffer;
+    printf("%s", client->inbuffer);
 }
 
 void Get_Weather_Report_Data()
+{
+    HTTPClient client;
+    
+    if (HTTPClient_Initiate(&client, On_Received_Weather_Data) != 0)
+    {
+        std::cout << "Failed to Initiate HTTPClient" << "\n";
+        return;
+    }
+
+    std::cout << "Hello, this is the client :)\n";
+
+    HTTPClient_GET(&client, SERVER_ADDR, "/weather", TEST_PORT);
+
+    while (HTTPClient_Work(&client) == false);
+
+    HTTPClient_Dispose(&client);
+}
+
+void Get_Spot_Price_Report_Data()
 {
     HTTPClient client;
     
@@ -44,102 +66,22 @@ void Get_Weather_Report_Data()
     HTTPClient_Dispose(&client);
 }
 
-void Get_Energy_Summary()
+void Get_Energy_Summary()       
 {
-    HTTPClient client;
-
+     HTTPClient client;
+    
     if (HTTPClient_Initiate(&client, On_Received_Summary) != 0)
     {
-        std::cout << "Failed to initiate HTTP Client\n";
+        std::cout << "Failed to Initiate HTTPClient" << "\n";
         return;
     }
 
-    HTTPClient_GET(&client, SERVER_ADDR, "/advice", TEST_PORT);
+    std::cout << "Hello, this is the client :)\n";
+
+    HTTPClient_GET(&client, SERVER_ADDR, "/summary", TEST_PORT);
 
     while (HTTPClient_Work(&client) == false);
 
-    char *json_start = strstr((char*)http_response.c_str(), "\r\n\r\n");
-    if (!json_start)
-    {
-        std::cout << "Invalid HTTP Response\n";
-        HTTPClient_Dispose(&client);
-        return;
-    }
-
-    json_start += 4;
-
-    cJSON *energy = cJSON_Parse(json_start);
-    if (!energy)
-    {
-        std::cout << "Failed to parse JSON\n";
-        HTTPClient_Dispose(&client);        
-        return;
-    }        
-
-    cJSON *summary = cJSON_GetObjectItem(energy, "summary");
-    if (!summary)
-    {
-        std::cout << "Summary does not exist!\n";
-        cJSON_Delete(energy);
-        HTTPClient_Dispose(&client);        
-        return;
-    }
-
-    std::cout << "\n====================== SUMMARY FOR THE DAY ======================\n\n";
-    cJSON *charge = cJSON_GetObjectItem(summary, "charge");
-    cJSON *found_charge = cJSON_GetObjectItem(charge, "found");
-    if (!cJSON_IsTrue(found_charge))
-    {
-        std::cout << "The best time to CHARGE from grid: There is no window that fulfills the requirements today\n";
-    }
-    else
-    {
-        std::cout << "The best time to CHARGE from grid: " 
-            << cJSON_GetObjectItem(charge, "start")->valuestring 
-            << " - "
-            << cJSON_GetObjectItem(charge, "end")->valuestring
-            << " (avg "
-            << cJSON_GetObjectItem(charge, "avg")->valuedouble
-            << ")\n";
-    }
-    
-    cJSON *consume = cJSON_GetObjectItem(summary, "consume");
-    cJSON *found_consume = cJSON_GetObjectItem(consume, "found");
-    if (!cJSON_IsTrue(found_consume))
-    {
-        std::cout << "The best time to CONSUME solar: There is no window that fulfills the requirements today\n";
-    }
-    else
-    {
-        std::cout << "The best time to CONSUME solar: "
-            << cJSON_GetObjectItem(consume, "start")->valuestring
-            << " - "
-            << cJSON_GetObjectItem(consume, "end")->valuestring
-            << " (avg "
-            << cJSON_GetObjectItem(consume, "avg")->valuedouble
-            << ")\n";
-    }
-
-    cJSON *sell = cJSON_GetObjectItem(summary, "sell");
-    cJSON *found_sell = cJSON_GetObjectItem(sell, "found");
-    if (!cJSON_IsTrue(found_sell))
-    {
-        std::cout << "The best time to SELL energy: There is no window that fulfills the requirements today\n";
-    }
-    else
-    {
-        std::cout << "The best time to SELL energy: "
-            << cJSON_GetObjectItem(sell, "start")->valuestring
-            << " - "
-            << cJSON_GetObjectItem(sell, "end")->valuestring
-            << " (avg "
-            << cJSON_GetObjectItem(sell, "avg")->valuedouble
-            << ")\n";
-    }
-
-    std::cout << "\n=================================================================\n";
-
-    cJSON_Delete(energy);
     HTTPClient_Dispose(&client);
 }
 
@@ -225,6 +167,7 @@ int main()
     Menu menu;
     
     menu.Add_Selection("Get Weather Report Data", Get_Weather_Report_Data);
+    menu.Add_Selection("Get Spot Price Report Data", Get_Spot_Price_Report_Data);
     menu.Add_Selection("Get Energy Summary", Get_Energy_Summary);
 
     if (isServerOnline("http://31.209.27.130:1234"))
