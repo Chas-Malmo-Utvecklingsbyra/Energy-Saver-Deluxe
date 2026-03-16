@@ -89,7 +89,7 @@ HTTP_Status_Code weather_handler_handle(QueryParameters_t *params, Route_Handler
         return HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR;
     }
 
-    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_JSON, response_data, true);
+    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_JSON, response_data, false);
 
     //Logger_Write(cool_context->logger, "%s", "Write stuff here I guess"); fix this, logger should not be null
     return response->status_code;
@@ -124,5 +124,20 @@ HTTP_Status_Code summary_handler_handle(QueryParameters_t *params, Route_Handler
     Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, response_data, false);
 
     //Logger_Write(cool_context->logger, "%s", "Write stuff here I guess"); fix this, logger should not be null
+    return response->status_code;
+}
+
+HTTP_Status_Code summary_page_handler_handle(QueryParameters_t *params, Route_Handler_Response_t *response, void *route_context, void *registry_context)
+{
+    (void)params;
+    (void)route_context;
+    (void)registry_context;
+
+    char *html = file_read_to_string("./frontend/summary.html");
+    if (!html)
+        return HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR;
+
+    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, html, false);
+
     return response->status_code;
 }

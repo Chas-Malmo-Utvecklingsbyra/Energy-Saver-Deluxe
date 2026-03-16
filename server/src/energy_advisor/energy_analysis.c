@@ -283,6 +283,8 @@ void write_advice_report_summary(const char *path, const char *filename, Quarter
     {
         write_advice_report(path, filename, "The best time to SELL energy: There is no window that fulfills the requirements today\n");
     }
+
+    write_advice_report(path, filename, "\n=================================================================\n");
 }
 
 void write_advice_report_remaining(const char *path, const char *filename, Quarter_Score *analysis, int count)

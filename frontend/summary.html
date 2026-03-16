@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energy Summary</title>
+
+<style>
+
+body{
+    margin:0;
+    background:black;
+    color:white;
+    font-family:monospace;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    padding:40px;
+}
+
+.summary-box{
+    background:#111;
+    border:1px solid #333;
+    border-radius:10px;
+    padding:30px;
+    white-space:pre-wrap;
+    line-height:1.6;
+    box-shadow:0 0 15px rgba(0,0,0,0.6);
+}
+
+.back{
+    display:inline-block;
+    margin-bottom:20px;
+    color:#ff7300;
+    text-decoration:none;
+}
+
+.back:hover{
+    color:aquamarine;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<a class="back" href="/">← Back</a>
+
+<div id="summary" class="summary-box">
+Loading summary...
+</div>
+
+</div>
+
+<script>
+
+fetch("/summary")
+.then(r => r.text())
+.then(text => {
+    document.getElementById("summary").textContent = text;
+});
+
+</script>
+</body>
+</html>

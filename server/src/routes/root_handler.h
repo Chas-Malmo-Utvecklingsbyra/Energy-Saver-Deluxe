@@ -12,5 +12,6 @@ HTTP_Status_Code weather_handler_handle(QueryParameters_t *params, Route_Handler
 
 HTTP_Status_Code summary_handler_handle(QueryParameters_t *params, Route_Handler_Response_t *response, void *route_context, void *registry_context);
 
+HTTP_Status_Code summary_page_handler_handle(QueryParameters_t *params, Route_Handler_Response_t *response, void *route_context, void *registry_context);
 
 #endif // ROOT_HANDLE_H

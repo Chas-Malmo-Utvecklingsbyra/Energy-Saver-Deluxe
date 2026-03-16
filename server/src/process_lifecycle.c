@@ -58,6 +58,7 @@ int http_server_process(void *context)
     HTTP_Server_Register_Route(&http_server, "/advice", HTTP_METHOD_GET, advice_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/weather", HTTP_METHOD_GET, weather_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/summary", HTTP_METHOD_GET, summary_handler_handle, NULL);
+    HTTP_Server_Register_Route(&http_server, "/summary.html", HTTP_METHOD_GET, summary_page_handler_handle, NULL);
 
     if (HTTP_Server_Start(&http_server, 8080) == false)
     {
