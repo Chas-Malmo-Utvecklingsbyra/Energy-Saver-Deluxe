@@ -73,3 +73,5 @@ logfolder/*
 Energy_Advice_Reports/*
 settings.json
 perf.data
+cachegrind.out.*
+massif.out.*
