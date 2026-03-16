@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 199309L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,10 +8,14 @@
 #include "energy_advisor.h"
 #include "logger/logger.h"
 #include "file_helper/file_helper.h"
+#include "benchmark/benchmark.h"
 
 
 Energy_Status Energy_Advisor_Advice()
 {
+    Benchmark benchmark = {0};
+    Benchmark_Start(&benchmark);
+
     OpenMeteo_Data weather[ZONE_COUNT];
     Spotprice_Data prices[ZONE_COUNT];
 
@@ -84,6 +90,9 @@ Energy_Status Energy_Advisor_Advice()
     }
 
     Logger_Dispose(&energy_advisor_log);
+
+    Benchmark_Stop(&benchmark);
+    Benchmark_Print(&benchmark);
 
     return ENERGY_STATUS_OK;
 }
