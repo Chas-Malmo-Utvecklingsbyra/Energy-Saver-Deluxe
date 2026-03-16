@@ -9,10 +9,33 @@
 #include "file_helper/file_helper.h"
 #include "logger/logger.h"
 
-
-// Using a standard amount of 4 quarters per window here to avoid getting trash-values just because one quarter has high values
-// Could specify different windows for the separate actions if we want to be even more specific, but this is fine for now
 #define MIN_WINDOW_QUARTERS 4
+
+/**
+ * ENERGY MODEL OVERVIEW
+ * 
+ * Each day is divided into 96 quarters (15-minute intervals).
+ * 
+ * For each quarter the system evaluates:
+ * 
+ * - Electricity prices
+ * - Solar production potential
+ * - Battery state of charge
+ * 
+ * These inputs produce normalized recommendation scores for:
+ * 
+ * - Chargin the battery
+ * - Consuming energy
+ * - Selling energy
+ * 
+ * Scores range from 0 to 1 where:
+ * 
+ * 0 = strongly discouraged
+ * 1 = strongly recommended
+ * 
+ * The system then scans the results to identify optimal time windoes
+ * for each energy action.
+ */
 
 Energy_Flow_Advice compute_advice(float price_norm, float production, float battery_soc)
 {

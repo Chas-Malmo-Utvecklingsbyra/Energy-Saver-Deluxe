@@ -9,6 +9,22 @@
 #define MAX_HOURS           24
 #define SNAPSHOTS           (MAX_HOURS * QUARTERS_PER_HOUR)
 
+/**
+ * @brief Core data structures used by the energy advisor.
+ * 
+ * This header defines the primary data structures used throughout
+ * the energy analysis system.
+ * 
+ * Key structures include:
+ * 
+ * - Quarter_Score      : Analysis results for a single 15-minute period
+ * - Energy_Flow_Advice : Recommendation scores for energy flows
+ * - Best_Time_Window   : Optimal time window for a specific action
+ * - Energy_Summary     : Daily summary of optimal actions
+ * 
+ * These structures form the data model used across the entire system.
+ */
+
 typedef enum
 {
     ENERGY_STATUS_OK,
