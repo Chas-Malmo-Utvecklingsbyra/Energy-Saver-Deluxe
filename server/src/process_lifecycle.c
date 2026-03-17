@@ -20,6 +20,8 @@
 #include "energy_advisor/energy_advisor.h"
 
 #define ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS 60
+#define MINUTES_TO_SECONDS(x) (x*60)
+
 
 /**
  * @brief Helper function to check if a given date string (YYYY-MM-DD) matches today's date.
@@ -99,6 +101,8 @@ int energy_advisor_process(void *context)
     bool first_file_exists = false;
     bool second_file_exists = false;
 
+    sleep(15);
+
     while (energy_advisor_should_quit == 0)
     {
         for (size_t i = 0; i < fetcher_command_count; i++)
@@ -156,7 +160,41 @@ int energy_advisor_process(void *context)
         first_file_exists = false;
         second_file_exists = false;
 
-        sleep(ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS);
+        time_t current_time = time(NULL);
+        struct tm *tm_info = localtime(&current_time);
+
+        int minutes = tm_info->tm_min;
+        int seconds_to_sleep = 0;
+        int minutes_in_seconds = MINUTES_TO_SECONDS(minutes);
+
+        if (minutes == 0 || minutes == 15 || minutes == 30 || minutes == 45)
+        {
+            sleep(60);
+            break;
+        }
+
+        if (minutes > 0 && minutes < 15)
+        {
+            seconds_to_sleep = MINUTES_TO_SECONDS(16) - minutes_in_seconds;
+        }
+        else if (minutes > 15 && minutes < 30)
+        {
+            seconds_to_sleep = MINUTES_TO_SECONDS(31) - minutes_in_seconds;
+        }
+        else if (minutes > 30 && minutes < 45)
+        {
+            seconds_to_sleep = MINUTES_TO_SECONDS(46) - minutes_in_seconds;
+        }
+        else if (minutes > 45 && minutes <= 59)
+        {
+            seconds_to_sleep = MINUTES_TO_SECONDS(01) - minutes_in_seconds;
+        }
+        
+        printf("Seconds to sleep [ADVICE]: %d\r\n", seconds_to_sleep);
+
+        sleep(seconds_to_sleep);
+
+        /* sleep(ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS); */
     }
 
     return 0;
