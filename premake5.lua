@@ -133,10 +133,10 @@ local function setup_config()
     "fetcher_exec_path": "/bin/http-request-service",
     "fetchers_commands_count": 5,
     "fetchers_commands_args": [
-      "-i 60 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=65.58&longitude=22.15&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather_SE1.json",
-      "-i 60 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=62.39&longitude=17.31&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather_SE2.json",
-      "-i 60 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=59.33&longitude=18.07&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather_SE3.json",
-      "-i 60 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=55.71&longitude=13.19&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather_SE4.json",
+      "-q 1 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=65.58&longitude=22.15&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather_SE1.json",
+      "-q 1 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=62.39&longitude=17.31&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather_SE2.json",
+      "-q 1 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=59.33&longitude=18.07&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather_SE3.json",
+      "-q 1 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=55.71&longitude=13.19&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o %s/data/weather -n weather_SE4.json",
       "-i 60 -u 'https://www.elprisetjustnu.se' -r '/api/v1/prices/' -o %s/data/price -n price"
         ]
     }
