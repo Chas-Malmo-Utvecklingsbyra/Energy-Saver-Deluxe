@@ -19,7 +19,6 @@
 #include "file_helper/file_helper.h"
 #include "energy_advisor/energy_advisor.h"
 
-#define ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS 60
 #define MINUTES_TO_SECONDS(x) (x*60)
 
 
@@ -193,8 +192,6 @@ int energy_advisor_process(void *context)
         printf("Seconds to sleep [ADVICE]: %d\r\n", seconds_to_sleep);
 
         sleep(seconds_to_sleep);
-
-        /* sleep(ENERGY_ADVISOR_CHECK_INTERVAL_SECONDS); */
     }
 
     return 0;
