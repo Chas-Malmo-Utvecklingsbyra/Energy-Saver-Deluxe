@@ -28,7 +28,7 @@
  * 
  * These inputs produce normalized recommendation scores for:
  * 
- * - Chargin the battery
+ * - Charging the battery
  * - Consuming energy
  * - Selling energy
  * 
@@ -62,7 +62,7 @@ Energy_Flow_Advice compute_advice(float price_norm, float production, float batt
 
 Best_Time_Window find_best_window(Quarter_Score *data, int count, float (*score_fn)(const Quarter_Score *), float threshold)
 {
-    Best_Time_Window best = { -1, -1, 0.0f, false};
+    Best_Time_Window best = { -1, -1, 0.0f, false };
 
     int current_start = -1;
     float sum = 0.0f;
@@ -198,15 +198,21 @@ Quarter_Score *Energy_Run_Analysis(OpenMeteo_Data *weather, Spotprice_Data *pric
 {
     int i;
     int count = prices->length;
+    
+    Logger energy_analysis_log = {0};
+    const char log_filename[] = "Energy_Analysis_Log.txt";
+    Logger_Init(&energy_analysis_log, "ENERGY ANALYSIS", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
 
     Quarter_Score *analysis = calloc(count, sizeof(Quarter_Score));
     if (!analysis)
+        LOG_WRITE(&energy_analysis_log, "Analysis data is missing");
         return NULL;
 
     float *price_buffer = malloc(sizeof(float) *count);
     if (!price_buffer)
     {
         free(analysis);
+        LOG_WRITE(&energy_analysis_log, "Price buffer is empty");
         return NULL;
     }
 
@@ -257,6 +263,8 @@ Quarter_Score *Energy_Run_Analysis(OpenMeteo_Data *weather, Spotprice_Data *pric
     *out_count = count;
     *out_low = low_price;
     *out_high = high_price;
+
+    Logger_Dispose(&energy_analysis_log);
 
     return analysis;
 }

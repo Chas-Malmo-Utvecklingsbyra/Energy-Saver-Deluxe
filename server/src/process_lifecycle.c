@@ -190,7 +190,7 @@ int energy_advisor_process(void *context)
         }
         else if (minutes > 45 && minutes <= 59)
         {
-            seconds_to_sleep = MINUTES_TO_SECONDS(01) - minutes_in_seconds;
+            seconds_to_sleep = MINUTES_TO_SECONDS(61) - minutes_in_seconds;
         }
         
         printf("Seconds to sleep [ADVICE]: %d\r\n", seconds_to_sleep);
