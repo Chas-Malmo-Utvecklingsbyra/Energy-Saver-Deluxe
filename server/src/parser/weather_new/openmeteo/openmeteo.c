@@ -21,8 +21,7 @@ OpenMeteo_Data OpenMeteo_ConvertJSONToData(const char *file_name)
     cJSON *direct_radiation_array = cJSON_GetObjectItem(minutely_15, "direct_radiation");
     cJSON *diffuse_radiation_array = cJSON_GetObjectItem(minutely_15, "diffuse_radiation");
     cJSON *direct_normal_irradiance_array = cJSON_GetObjectItem(minutely_15, "direct_normal_irradiance");
-    cJSON *temperature_2m_array = cJSON_GetObjectItem(minutely_15, "temperature_2m");
-    cJSON *weather_code_array = cJSON_GetObjectItem(minutely_15, "weather_code");
+    cJSON *temperature_2m_array = cJSON_GetObjectItem(minutely_15, "temperature");
 
     int array_size = cJSON_GetArraySize(time_array);
 
@@ -44,17 +43,13 @@ OpenMeteo_Data OpenMeteo_ConvertJSONToData(const char *file_name)
         cJSON *diffuse_radiation_item = cJSON_GetArrayItem(diffuse_radiation_array, i);
         if (diffuse_radiation_item == NULL)
             break;
-    
+
         cJSON *direct_normal_irradiance_item = cJSON_GetArrayItem(direct_normal_irradiance_array, i);
         if (direct_normal_irradiance_item == NULL)
             break;
 
         cJSON *temperature_2m_item = cJSON_GetArrayItem(temperature_2m_array, i);
         if (temperature_2m_item == NULL)
-            break;
-
-        cJSON *weather_code_item = cJSON_GetArrayItem(weather_code_array, i);
-        if (weather_code_item == NULL)
             break;
 
         OpenMeteo_Quarter quarter = {0};
@@ -72,7 +67,6 @@ OpenMeteo_Data OpenMeteo_ConvertJSONToData(const char *file_name)
         quarter.diffuse_radiation = (float)cJSON_GetNumberValue(diffuse_radiation_item);
         quarter.direct_normal_irradiance = (float)cJSON_GetNumberValue(direct_normal_irradiance_item);
         quarter.temperature_2m = (float)cJSON_GetNumberValue(temperature_2m_item);
-        quarter.weather_code = (unsigned char)cJSON_GetNumberValue(weather_code_item);
 
         data.quarters[i] = quarter;
     }
@@ -115,7 +109,7 @@ void OpenMeteo_Print_Quarter(OpenMeteo_Quarter* quarter)
 
     OpenMeteo_Get_Quarter_Time_String(quarter, time_buffer, length);
 
-    printf("Time: %s | Direct_Rad: %f | Diffuse: %f | Direct_Norm: %f | Temp_2m: %f | Weather_Code: %d\n", 
-        time_buffer, quarter->direct_radiation, quarter->diffuse_radiation, quarter->direct_normal_irradiance, quarter->temperature_2m, quarter->weather_code
+    printf("Time: %s | Direct_Rad: %f | Diffuse: %f | Direct_Norm: %f | Temp_2m: %f\n", 
+        time_buffer, quarter->direct_radiation, quarter->diffuse_radiation, quarter->direct_normal_irradiance, quarter->temperature_2m
     );
 }

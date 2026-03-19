@@ -11,7 +11,6 @@ typedef struct
     float diffuse_radiation;
     float direct_normal_irradiance;
     float temperature_2m;
-    unsigned char weather_code;
 } OpenMeteo_Quarter;
 
 typedef struct
