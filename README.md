@@ -12,8 +12,8 @@
 
 
 ## Project Goals:
-* `To create a platform which collects weather data and spot price data, that use the collected data to calculate the optimal times for electricity consumption, charging batteries and selling surplus energy during the upcoming day with each time slot set at 15 minute intervals.`
-* `A local runnable system without cloud dependencies to be used in a smart home, energy optimization or embedded contexts.`
+* `To create a platform which collects weather data and spot price data, that uses the collected data to calculate the optimal times for electricity consumption, charging batteries and selling surplus energy during the upcoming day with each time slot set at 15 minute intervals.`
+* `A locally runnable system without cloud dependencies to be used in a smart home, energy optimization or embedded contexts.`
 * `By combining weather data and spot price data, the system can calculate optimal time slots for when the different actions are recommended.`
 * `The project will be completed through an agile work set, in the form of the SCRUM-method`
 
@@ -26,17 +26,21 @@
 * cJSON (included in include/core/json/)
 
 ## How to use
-* 1) `Clone our repository - input the following into your terminal:` 
-`git clone https://github.com/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe.git`
-* 2) `Install the prerequisites: 'premake5 install' in the terminal in the root folder`
-* 3) `Starting the server: 'premake5 server'`
-* 4) `Quit by typing 'q' or 'quit' in the terminal`
-* 5) `Clean up with 'premake5 clean'`
-*
-* `Access the resulting data in one of three ways:`
+* 1) `Clone the repository:` 
+   `git clone https://github.com/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe.git`
+* 2) `Install the prerequisites:`
+   `'premake5 install' in the terminal in the root folder`
+* 3) `Starting the server:`
+   `'premake5 server'`
+* 4) `Stop the server:`
+   `Type 'q' or 'quit'`
+* 5) `Clean up:`
+   `Clean up with 'premake5 clean'`
+
+* `How to access the collected and analyzed data:`
 * A) `Manually open and read the files created in the Energy_Advice_Reports and/or Energy_Advice_Report_Summary`
 * B) `Starting the client: 'premake5 client' in a separate terminal after launching the server`
-* C) `Alternatively, open http://localhost:8080 (default)`
+* C) `Alternatively, open http://localhost:8080 (default) when the server is running`
 *
 * `Edit settings.json to select port and configure how fetching is done`
 
@@ -69,26 +73,30 @@
 
 
 ### Data Collection: 
-* `Spawns processes that fetch weather data from "OpenMeteo", this repeats every 15 minutes.`
-* `Spawns processes that fetch spot price data from "Elprisetjustnu", done at program start, and repeated at the interval given by the user.`
+* `Spawns processes that fetch weather data from OpenMeteo. This then repeats every 15 minutes.`
+* `Spawns processes that fetch spot price data from Elprisetjustnu, done at program start, and repeated at the interval given by the user.`
 * `Stores the collected data in JSON files by quarter of an hour segments`
 * `When the collection of data is done, the program proceeds to the next part - Analyzing the data.`
 
 
-### Analyzing Engine:
+### Analysis Engine:
 * `Will analyze the spot prices and weather data by each quarter of the given day, to calculate and grade each quarter.`
 * `These grades will then be judged in the analysis and built into a "best window" in a summary which states the best times to perform the three given actions during the coming day (Charge, Consume and Sell)`
 * `Functionality:`
-    * `Uses the collected data on weather and spot price to start calculating and grading each quarters information.`
-    * `Every point in the report will be graded between 0-1, where 0 is strongly discouraged and 1 is strongly recommended`
+    * `Uses the collected data and starts calculating, and grading each quarter's information.`
+    * `Every point in the report will be graded between 0-1.`
+       * `where 0 is strongly discouraged and 1 is strongly recommended.`
     * `It summarizes all the collected data into seven distinct categories:`
-        * `Charging is set to two types: Charge from grid and Charge from source`
-        * `Consuming has three types: Consume from grid, from source or from battery`
-        * `Selling is set to two different types: Sell from battery and from source`
-    * `These grades will then be checked and summarized into a (by the user) set window-span and by also checking if they meet the required threshold (also set by the user). Then the summary displays the days best window for the three actions`
-    * `Should there not be a suitable window during the day, the program will signal this by displaying a message explaining this.`
-    * `Storing this information into a text-file and a json-file and shared to our endpoints, enabling the client to be able to     present the data in the terminal with a clear structure.`
-    * `All this information can also be viewed on http://localhost:8080 in the browser`
+        * `Charging is set to two types: Charge from grid and Charge from source.`
+        * `Consuming has three types: Consume from grid, from source or from battery.`
+        * `Selling is set to two different types: Sell from battery and from source.`
+    * `These grades will then be checked and summarized into a (by the user) set window-span.`
+    * `Then the program will check if they meet the required threshold (also set by the user).`
+    * `The summary displays the days best window for the three actions.`
+       * `Should there not be a suitable window during the day, the program will signal this by displaying a message explaining this.`
+    * `Storing this information into a text-file and a JSON file and shared to our endpoints.`
+    * `The endpoints enables the client to present the data in the terminal with a clear structure by using a callback to the server.`
+    * `All this information can also be viewed on http://localhost:8080 in the browser while the server is running.`
     * `Implementing caching in a local file system.`
 * `This is only a suggestion by the program, based on the provided information, and it's up to the user whether or not they want to use this advice.`
 
