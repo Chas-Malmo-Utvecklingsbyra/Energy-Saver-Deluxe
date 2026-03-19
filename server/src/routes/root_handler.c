@@ -2,7 +2,6 @@
 #include "logger/logger.h"
 #include "file_helper/file_helper.h"
 #include "json/fileHelper/fileHelper.h"
-#include <time.h>
 
 typedef struct HTTP_Cool_Context HTTP_Cool_Context;
 struct HTTP_Cool_Context
@@ -17,127 +16,11 @@ HTTP_Status_Code root_handler_handle(QueryParameters_t *params, Route_Handler_Re
     (void)route_context;
     (void)registry_context; //temp
 
-    char buffer[2046];
-    memset(buffer, 0, sizeof(buffer));
-
     char* html = file_read_to_string("./frontend/index.html");
 
     Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, html, true);
 
     response->content_type = HTTP_CONTENT_TYPE_HTML;
-    // Logger_Write(cool_context->logger, "%s", "Hii"); fix this, logger should not be null
-
-    return response->status_code;
-}
-
-//TODO fix errors
-HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_Response_t *response, void *route_context, void *registry_context)
-{
-    (void)params;
-    // (void)response;
-    (void)route_context;
-    (void)registry_context;
-    printf("Advice handler called!\n");
-
-    char* response_data; // Energy_Advice json files are about 31000 characters
-    size_t response_size = 0;
-
-    time_t current_time = time(NULL);
-    struct tm tomorrow = *localtime(&current_time);
-    tomorrow.tm_mday += + 1;
-    mktime(&tomorrow);
-
-    char filename[64]; 
-    // TODO PL: Still has to be changed, because the data should cover the current day until the program fetches new information (ev around 16:15), but right now the json-file is the coming date all day, so it works for now.
-    snprintf(filename, sizeof(filename), "Energy_Advice_SE4_%04d-%02d-%02d.json", tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
-    
-    File_Helper_Result result = File_Helper_Read("./Energy_Advice_Reports", filename, &response_data, &response_size);
-    if (FILE_HELPER_RESULT_SUCCESS != result)
-    {
-        printf("Error code: %d\r\n", result);
-        return HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR;
-    }
-
-    char final_response[response_size];
-
-    snprintf(final_response, response_size, "%s", response_data);
-
-    free(response_data);
-    response_data = NULL;
-
-    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_JSON, final_response, false);
-
-    //Logger_Write(cool_context->logger, "%s", "Write stuff here I guess"); fix this, logger should not be null
-    return response->status_code;
-}
-
-HTTP_Status_Code weather_handler_handle(QueryParameters_t *params, Route_Handler_Response_t *response, void *route_context, void *registry_context)
-{
-    (void)params;
-    // (void)response;
-    (void)route_context;
-    (void)registry_context;
-    printf("Weather handler called!\n");
-
-    char* response_data;
-    size_t response_size = 0;
-    
-    File_Helper_Result result = File_Helper_Read("./data/weather", "weather_SE4.json", &response_data, &response_size);
-    if (FILE_HELPER_RESULT_SUCCESS != result)
-    {
-        printf("Error code: %d\r\n", result);
-        return HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR;
-    }
-
-    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_JSON, response_data, false);
-
-    //Logger_Write(cool_context->logger, "%s", "Write stuff here I guess"); fix this, logger should not be null
-    return response->status_code;
-}
-
-HTTP_Status_Code summary_handler_handle(QueryParameters_t *params, Route_Handler_Response_t *response, void *route_context, void *registry_context)
-{
-    (void)params;
-    // (void)response;
-    (void)route_context;
-    (void)registry_context;
-    printf("Summary handler called!\n");
-
-    char* response_data;
-    size_t response_size = 0;
-
-    time_t current_time = time(NULL);
-    struct tm tomorrow = *localtime(&current_time);
-    tomorrow.tm_mday += + 1;
-    mktime(&tomorrow);
-
-    char filename[64]; 
-    snprintf(filename, sizeof(filename), "Energy_Advice_Summary_SE4_%04d-%02d-%02d.txt", tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);
-       
-    File_Helper_Result result = File_Helper_Read("./Energy_Advice_Report_Summary", filename, &response_data, &response_size);
-    if (FILE_HELPER_RESULT_SUCCESS != result)
-    {
-        printf("Error code: %d\r\n", result);
-        return HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR;
-    }
-
-    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, response_data, false);
-
-    //Logger_Write(cool_context->logger, "%s", "Write stuff here I guess"); fix this, logger should not be null
-    return response->status_code;
-}
-
-HTTP_Status_Code summary_page_handler_handle(QueryParameters_t *params, Route_Handler_Response_t *response, void *route_context, void *registry_context)
-{
-    (void)params;
-    (void)route_context;
-    (void)registry_context;
-
-    char *html = file_read_to_string("./frontend/summary.html");
-    if (!html)
-        return HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR;
-
-    Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, html, false);
 
     return response->status_code;
 }

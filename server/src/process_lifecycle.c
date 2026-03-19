@@ -18,6 +18,10 @@
 #include "config/config.h"
 #include "file_helper/file_helper.h"
 #include "energy_advisor/energy_advisor.h"
+#include "routes/advice_handler.h"
+#include "routes/summary_handler.h"
+#include "routes/summary_page_handler.h"
+#include "routes/weather_handler.h"
 
 #define MINUTES_TO_SECONDS(x) (x*60)
 
@@ -108,7 +112,7 @@ int energy_advisor_process(void *context)
         {
             char *directory = NULL;
             char *filename = NULL;
-            char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
+            const char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
             parse_command_args(cmd_args_string, &args);
 
             for (int j = 0; args[j]; j++)
