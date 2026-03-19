@@ -27,6 +27,32 @@
 *
 * `Edit settings.json to select port and configure how fetching is done`
 
+## Settings
+* `Settings are done in settings.json, which is automatically created with default settings when the command 'premake5 install' is run`
+
+* `http_server_port: select which port to host the localhost server on`
+* `exec_fetcher_on_startup: runs the fetchers once before going into potential sleep modes`
+* `fetcher_exec_path: defaults to /bin/http-request-service which is accurate for when installing with premake5, but can be altered if Http Request Service is installed elsewhere manually`
+* `fetchers_command_count: number of fetchers to run, must match the number of commands entered`
+* `fetcher_commands_args: list of arguments to be run`
+
+* `Arguments`
+* `--url        -u      Base url to fetch from`
+* `--route      -r      API route for the base url`
+* `--output     -o      Where to save the fetched file`
+* `--name       -n      What to name the fetched file`
+* `--intervals  -i      Time in seconds to sleep between fetching`
+* `--quarter    -q      1 to activate. Fetch every quarter of an hour, at minutes 00, 15, 30, 45`
+* `--timestamp  -ts     Time of day in 00:00 (hours:minutes) format for recurring daily fetches`
+* `--read-fd    -fd     1 to activate. Enables pipe communication with parent process if run through a different program`
+* `--write-fd   -fd     Same as above`
+
+* `Examples`
+* `"-q 1 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=65.58&longitude=22.15&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o /home/henrik/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe/data/weather -n weather_SE1.json"`
+* `Fetches data once every quarter hour from Open-Meteo with various API arguments. Outputs the response in a file named weather_SE1.json in the specified folder`
+
+* `"-ts 16:00 -u 'https://www.elprisetjustnu.se' -r '/api/v1/prices/' -o /home/henrik/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe/data/price -n price"`
+* `Fetches data from ElprisetJustNu once a day at 16:00 and outputs the result in a file named price`
 
 ### The collecting part: 
 * `The program spawns processes that fetches weather data from "OpenMeteo" and spot price data from "Elprisetjustnu" and stores that info into json-files.`
