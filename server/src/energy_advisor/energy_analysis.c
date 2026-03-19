@@ -205,8 +205,10 @@ Quarter_Score *Energy_Run_Analysis(OpenMeteo_Data *weather, Spotprice_Data *pric
 
     Quarter_Score *analysis = calloc(count, sizeof(Quarter_Score));
     if (!analysis)
+    {
         LOG_WRITE(&energy_analysis_log, "Analysis data is missing");
         return NULL;
+    }
 
     float *price_buffer = malloc(sizeof(float) *count);
     if (!price_buffer)
