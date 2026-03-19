@@ -2,28 +2,37 @@
 
 # Chas Malmö Utvecklingsbyrå
 
-## What this project is all about
-* `This is a project based upon developing a Local Energy Optimization Platform (LEOP) for forecasting and optimizing solar energy. This project builds upon skills we've learned in earlier courses and will develop to feel and function as a real life production energy system.`
+## Summary
+* `Energy Saver Deluxe is a Local Energy Optimization Platform (LEOP), for forecasting and optimizing solar energy.`
+* `This project builds on the skills we've learned in earlier courses and is designed to resemble and function as a real-world production energy system.`
 
 
 ## Project Goals:
-* `To create a platform which collects weather data and spotprice data, to then use that data to calculate the optimal times for electricity consumption, charging batteries and selling surplus energy during the upcoming day with each time slot set at 15 minute intervals.`
-* `A local runable system without cloud dependencies to be used in a smart home, energy optimization or embedded contexts.`
-* `By combining weather data and spotprice data, the system can calculate optimal time slots for when the different actions are recommended.`
+* `To create a platform which collects weather data and spot price data, that use the collected data to calculate the optimal times for electricity consumption, charging batteries and selling surplus energy during the upcoming day with each time slot set at 15 minute intervals.`
+* `A local runnable system without cloud dependencies to be used in a smart home, energy optimization or embedded contexts.`
+* `By combining weather data and spot price data, the system can calculate optimal time slots for when the different actions are recommended.`
 * `The project will be completed through an agile work set, in the form of the SCRUM-method`
 
+## Dependencies
+* Linux (Ubuntu)
+* gcc
+* curl
+* premake
+* make
+* cJSON (included in include/core/json/)
+
 ## How to use
-* `Clone our repo to your computer: write the line under this in to your terminal:` 
+* 1) `Clone our repository - input the following into your terminal:` 
 `git clone https://github.com/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe.git`
-* `Run 'premake5 install`
-* `Run 'premake5 server'`
-* `Quit by typing 'q' or 'quit' in the terminal`
-* `Clean up with 'premake5 clean'`
+* 2) `Install the prerequisites: 'premake5 install' in the terminal in the root folder`
+* 3) `Starting the server: 'premake5 server'`
+* 4) `Quit by typing 'q' or 'quit' in the terminal`
+* 5) `Clean up with 'premake5 clean'`
 *
 * `Access the resulting data in one of three ways:`
-* `Manually open and read the files created in the Energy_Advice_Reports and/or Energy_Advice_Report_Summary`
-* `Run 'premake5 client' in a separate terminal after launching the server`
-* `Alternatively, open localhost:8080 (default)`
+* A) `Manually open and read the files created in the Energy_Advice_Reports and/or Energy_Advice_Report_Summary`
+* B) `Starting the client: 'premake5 client' in a separate terminal after launching the server`
+* C) `Alternatively, open http://localhost:8080 (default)`
 *
 * `Edit settings.json to select port and configure how fetching is done`
 
@@ -48,19 +57,21 @@
 * `--write-fd   -fd     Same as above`
 
 * `Examples`
-* `"-q 1 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=65.58&longitude=22.15&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o /home/henrik/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe/data/weather -n weather_SE1.json"`
-* `Fetches data once every quarter hour from Open-Meteo with various API arguments. Outputs the response in a file named weather_SE1.json in the specified folder`
+* `"-q 1 -u 'https://api.open-meteo.com' -r '/v1/forecast?latitude=65.58&longitude=22.15&minutely_15=direct_radiation,diffuse_radiation,direct_normal_irradiance,temperature_2m,weather_code' -o /home/user/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe/data/weather -n weather_SE1.json"`
+* `Fetches data once every 15 minutes from Open-Meteo with various API arguments. Outputs the response in a file named weather_SE1.json in the specified folder`
 
-* `"-ts 16:00 -u 'https://www.elprisetjustnu.se' -r '/api/v1/prices/' -o /home/henrik/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe/data/price -n price"`
+* `"-ts 16:00 -u 'https://www.elprisetjustnu.se' -r '/api/v1/prices/' -o /home/user/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe/data/price -n price"`
 * `Fetches data from ElprisetJustNu once a day at 16:00 and outputs the result in a file named price`
 
-### The collecting part: 
-* `The program spawns processes that fetches weather data from "OpenMeteo" and spot price data from "Elprisetjustnu" and stores that info into json-files.`
-* `The processes collects the weather data every 15 minutes, and spotprices get collected at program start, and then again at the time specified by the user (right now set as an argument in http-request-service and recommended to be put at 16:00 (local swedish time))`
-* `After the program has collected the required data regarding weather and spot prices the program starts to proceed to building the analysis`
+
+### Data Collection: 
+* `Spawns processes that fetch weather data from "OpenMeteo", this repeats every 15 minutes.`
+* `Spawns processes that fetch spot price data from "Elprisetjustnu", done at program start, and repeated at the interval given by the user.`
+* `Stores the collected data in JSON files by quarter of an hour segments`
+* `When the collection of data is done, the program proceeds to the next part - Analyzing the data.`
 
 
-### The analysis part:
+### Analyzing Engine:
 * `Will analyze the spot prices and weather data by each quarter of the given day, to calculate and grade each quarter.`
 * `These grades will then be judged in the analysis and built into a "best window" in a summary which states the best times to perform the three given actions during the coming day (Charge, Consume and Sell)`
 * `Functionality:`
@@ -73,7 +84,7 @@
     * `These grades will then be checked and summarized into a (by the user) set window-span and by also checking if they meet the required threshold (also set by the user). Then the summary displays the days best window for the three actions`
     * `Should there not be a suitable window during the day, the program will signal this by displaying a message explaining this.`
     * `Storing this information into a text-file and a json-file and shared to our endpoints, enabling the client to be able to     present the data in the terminal with a clear structure.`
-    * `All this information can also be viewed on our localhost:8080 in the browser`
+    * `All this information can also be viewed on http://localhost:8080 in the browser`
     * `Implementing caching in a local file system.`
 * `This is only a suggestion by the program, based on the provided information, and it's up to the user whether or not they want to use this advice.`
 
@@ -85,7 +96,7 @@
     * `A feature that gets the prognosis report in the terminal`
     * `A feature that gets the spot price-data for the coming day`
     * `A feature that gets the summarized information regarding the best time windows for the upcoming day` 
-* `Documentaion:`
+* `Documentation:`
     * `The systems architecture.`
     * `User instructions.`
     * `Instructions regarding further development.`
@@ -97,7 +108,7 @@
 
 ## Primary Structure:
 * `Core`                    # Our core-library
-* `Energy Saver Deluxe`     # Includes everything energy related
+* `Energy Saver Deluxe`     # Includes everything energy related, our server and client.
 * `HTTP Request Service`    # Includes functionality for fetching information
 
 ## Meet the 'CHAS Malmö Utvecklingsbyrå's members:
