@@ -10,6 +10,11 @@
 * `- Analyzes optimal usage windows`
 * `- Provides recommendations for comsumption, charging and selling.`   
 
+## Architecture Overview
+* `- Server (C)`
+* `- Client (C++)`
+* `- Fetcher service`
+* `- Local file-based cache`
 
 ## Project Goals:
 * `To create a platform which collects weather data and spot price data, that uses the collected data to calculate the optimal times for electricity consumption, charging batteries and selling surplus energy during the upcoming day with each time slot set at 15 minute intervals.`
@@ -73,8 +78,8 @@
 
 
 ### Data Collection: 
-* `Spawns processes that fetch weather data from OpenMeteo. This then repeats every 15 minutes.`
-* `Spawns processes that fetch spot price data from Elprisetjustnu, done at program start, and repeated at the interval given by the user.`
+* `Spawns processes that fetch weather data from Open-Meteo. This then repeats every 15 minutes.`
+* `Spawns processes that fetch spot price data from ElprisetJustNu, done at program start, and repeated at the interval given by the user.`
 * `Stores the collected data in JSON files by quarter of an hour segments`
 * `When the collection of data is done, the program proceeds to the next part - Analyzing the data.`
 
@@ -90,8 +95,7 @@
         * `Charging is set to two types: Charge from grid and Charge from source.`
         * `Consuming has three types: Consume from grid, from source or from battery.`
         * `Selling is set to two different types: Sell from battery and from source.`
-    * `These grades will then be checked and summarized into a (by the user) set window-span.`
-    * `Then the program will check if they meet the required threshold (also set by the user).`
+    * `These grades are then evaluated against a user-defined time window and threshold.`
     * `The summary displays the days best window for the three actions.`
        * `Should there not be a suitable window during the day, the program will signal this by displaying a message explaining this.`
     * `Storing this information into a text-file and a JSON file and shared to our endpoints.`
