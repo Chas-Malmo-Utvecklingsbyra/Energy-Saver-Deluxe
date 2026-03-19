@@ -5,6 +5,10 @@
 ## Summary
 * `Energy Saver Deluxe is a Local Energy Optimization Platform (LEOP), for forecasting and optimizing solar energy.`
 * `This project builds on the skills we've learned in earlier courses and is designed to resemble and function as a real-world production energy system.`
+* `The program:`
+* `- Fetches weather and spot price data`
+* `- Analyzes optimal usage windows`
+* `- Provides recommendations for comsumption, charging and selling.`   
 
 
 ## Project Goals:
