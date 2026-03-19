@@ -24,7 +24,7 @@
  * 
  * These inputs produce normalized recommendation scores for:
  * 
- * - Chargin the battery
+ * - Charging the battery
  * - Consuming energy
  * - Selling energy
  * 
@@ -58,7 +58,7 @@ Energy_Flow_Advice compute_advice(float price_norm, float production, float batt
 
 Best_Time_Window find_best_window(Quarter_Score *data, int count, float (*score_fn)(const Quarter_Score *), float threshold)
 {
-    Best_Time_Window best = { -1, -1, 0.0f, false};
+    Best_Time_Window best = { -1, -1, 0.0f, false };
 
     int current_start = -1;
     float sum = 0.0f;
