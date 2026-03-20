@@ -25,6 +25,8 @@
 
 int main(int argc, char **argv)
 {
+    (void)argc;
+    (void)argv;
     // Fork to create parent supervisor and process manager child
     ProcessManager process_manager;
     pid_t process_manager_pid = fork();
