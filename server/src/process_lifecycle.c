@@ -69,8 +69,11 @@ int http_server_process(void *context)
     HTTP_Server_Register_Route(&http_server, "/summary.html", HTTP_METHOD_GET, summary_page_handler_handle, NULL);
     
     
+    Config_t *cfg =  Config_Get_Instance(NULL);
+    uint16_t port = (uint16_t)Config_Get_Field_Value_Integer(cfg, "http_server_port", NULL);
+
     LOG_WRITE(&logger, "Server starting.");
-    if (HTTP_Server_Start(&http_server, 8080) == false)
+    if (HTTP_Server_Start(&http_server, port) == false)
     {
         LOG_WRITE(&logger, "Server failed to start");
         return 2;
