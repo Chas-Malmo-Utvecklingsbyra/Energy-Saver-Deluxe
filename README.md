@@ -23,12 +23,11 @@
 * `The project will be completed through an agile work set, in the form of the SCRUM-method`
 
 ## Dependencies
-* Linux (Ubuntu)
+* Linux (Ubuntu, or any kind of distro)
 * gcc
 * curl
 * premake (can be installed using ./install_premake.sh)
 * make
-* cJSON (included in include/core/json/)
 
 ## How to use
 * 1) `Clone the repository:` 
