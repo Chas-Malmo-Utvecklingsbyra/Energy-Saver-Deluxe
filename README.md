@@ -8,7 +8,7 @@
 * `The program:`
 * `- Fetches weather and spot price data`
 * `- Analyzes optimal usage windows`
-* `- Provides recommendations for comsumption, charging and selling.`   
+* `- Provides recommendations for consumption, charging and selling.`   
 
 ## Architecture Overview
 * `- Server (C)`
@@ -39,14 +39,12 @@
 * 4) `Stop the server:`
    `Type 'q' or 'quit'`
 * 5) `Clean up:`
-   `Clean up with 'premake5 clean'`
+   `Clean up build files with 'premake5 clean'`
 
 * `How to access the collected and analyzed data:`
 * A) `Manually open and read the files created in the Energy_Advice_Reports and/or Energy_Advice_Report_Summary`
 * B) `Starting the client: 'premake5 client' in a separate terminal after launching the server`
 * C) `Alternatively, open http://localhost:8080 (default) when the server is running`
-*
-* `Edit settings.json to select port and configure how fetching is done`
 
 ## Settings
 * `Settings are done in settings.json, which is automatically created with default settings when the command 'premake5 install' is run`
@@ -107,6 +105,9 @@
 ## Deliverables:
 * `A functional server application implemented in C.`
     * `Starts our program and processes`
+    * `A process that handles our HTTP client`
+    * `HTTP Request Service processes as specified in settings.json`
+    * `The analysis process`
 * `A functional client application implemented in C++ with RAII.`
     * `A feature that gets the prognosis report in the terminal`
     * `A feature that gets the spot price-data for the coming day`
