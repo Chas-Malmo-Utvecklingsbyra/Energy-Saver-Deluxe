@@ -8,7 +8,7 @@
  * 
  * This module coordinates the complete energy analysis workflow:
  * 
- * 1. Loads weather data and spot price data for each Swedish energy zone.
+ * 1. Loads weather data and spot price data for each Swedish energy zone(4).
  * 2. Executes the energy analysis model.
  * 3. Generates human-readable reports.
  * 4. Generates machine-readable JSON reports.
