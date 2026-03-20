@@ -37,6 +37,5 @@ HTTP_Status_Code advice_handler_handle(QueryParameters_t *params, Route_Handler_
 
     Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_JSON, final_response, false);
 
-    //Logger_Write(cool_context->logger, "%s", "Write stuff here I guess"); fix this, logger should not be null
     return response->status_code;
 }
