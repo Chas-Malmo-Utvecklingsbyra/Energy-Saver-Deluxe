@@ -32,7 +32,7 @@ Energy_Status Energy_Advisor_Advice()
     {
         if (weather[z].length == 0 || prices[z].length == 0)
         {
-            LOG_WRITE(&energy_advisor_log, "Failed to load input data (zone: %s)", zones[z].zone);
+            LOG_WRITE(&energy_advisor_log, LOGGER_LEVEL_ERROR, "Failed to load input data (zone: %s)", zones[z].zone);
             continue;
         }
 
@@ -47,7 +47,7 @@ Energy_Status Energy_Advisor_Advice()
         int weather_start = Energy_Find_Weather_Start(&weather[z], &report_date, &weather_count);    
         if (weather_start == -1)
         {
-            LOG_WRITE(&energy_advisor_log, "Failed to get weather data for requested date (zone %s)", zones[z].zone);
+            LOG_WRITE(&energy_advisor_log, LOGGER_LEVEL_ERROR, "Failed to get weather data for requested date (zone %s)", zones[z].zone);
             continue;
         }
 
@@ -57,7 +57,7 @@ Energy_Status Energy_Advisor_Advice()
         Quarter_Score *analysis = Energy_Run_Analysis(&weather[z], &prices[z], &count, &low_price, &high_price, weather_start);
         if (!analysis)
         {
-            LOG_WRITE(&energy_advisor_log, "Out of memory for analysis (zone: %s)", zones[z].zone);
+            LOG_WRITE(&energy_advisor_log, LOGGER_LEVEL_ERROR, "Out of memory for analysis (zone: %s)", zones[z].zone);
             continue;
         }
 
@@ -87,7 +87,7 @@ Energy_Status Energy_Advisor_Advice()
         free(analysis);
     }   
 
-    LOG_WRITE(&energy_advisor_log, "Created fresh Energy Advice Reports");
+    LOG_WRITE(&energy_advisor_log, LOGGER_LEVEL_INFO, "Created fresh Energy Advice Reports");
 
     for (z = 0; z < ZONE_COUNT; z++)
     {

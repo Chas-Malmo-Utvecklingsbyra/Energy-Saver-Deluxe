@@ -54,14 +54,14 @@ int http_server_process(void *context)
 
     HTTP_Server http_server;
 
-    LOG_WRITE(&logger, "Initializing HTTP server.");
+    LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Initializing HTTP server.");
     if (HTTP_Server_Initialize(&http_server, 1024, NULL) == false)
     {
-        LOG_WRITE(&logger, "Server failed to initialize");
+        LOG_WRITE(&logger, LOGGER_LEVEL_ERROR, "Server failed to initialize");
         return 1;
     }
     
-    LOG_WRITE(&logger, "Registering routes.");
+    LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Registering routes.");
     HTTP_Server_Register_Route(&http_server, "/", HTTP_METHOD_GET, root_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/advice", HTTP_METHOD_GET, advice_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/weather", HTTP_METHOD_GET, weather_handler_handle, NULL);
@@ -72,23 +72,23 @@ int http_server_process(void *context)
     Config_t *cfg =  Config_Get_Instance(NULL);
     uint16_t port = (uint16_t)Config_Get_Field_Value_Integer(cfg, "http_server_port", NULL);
 
-    LOG_WRITE(&logger, "Server starting.");
+    LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Server starting.");
     if (HTTP_Server_Start(&http_server, port) == false)
     {
-        LOG_WRITE(&logger, "Server failed to start");
+        LOG_WRITE(&logger, LOGGER_LEVEL_ERROR, "Server failed to start");
         return 2;
     }
     
-    LOG_WRITE(&logger, "Server working.");
+    LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Server working.");
     while (http_server_should_quit == 0)
     {
         HTTP_Server_Work(&http_server);
     }
 
-    LOG_WRITE(&logger, "Disposing HTTP Server.");
+    LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Disposing HTTP Server.");
     HTTP_Server_Dispose(&http_server);
 
-    LOG_WRITE(&logger, "Disposing logger.");
+    LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Disposing logger.");
     Logger_Dispose(&logger);
     return 0;
 }
@@ -216,11 +216,11 @@ int run_process_manager_child(ProcessManager *process_manager)
         return -1;
     }
     
-    LOG_WRITE(&process_manager_logger, "%s", "Process Manager started");
+    LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Process Manager started");
 
     if (!ProcessManager_Init(process_manager, &process_manager_logger))
     {
-        LOG_WRITE(&process_manager_logger, "Failed to initialize Process Manager");
+        LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_ERROR, "Failed to initialize Process Manager");
         return -1;
     }
 
@@ -228,14 +228,14 @@ int run_process_manager_child(ProcessManager *process_manager)
 
     if (server_pid < 0)
     {
-        LOG_WRITE(&process_manager_logger, "Failed to spawn HTTP Server process");
+        LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_ERROR, "Failed to spawn HTTP Server process");
         return -1;
     }
 
     Config_t *cfg = Config_Get_Instance("settings.json");
     if (cfg == NULL)
     {
-        LOG_WRITE(&process_manager_logger, "Failed to load configuration!");
+        LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_ERROR, "Failed to load configuration!");
         exit(-1);
     }
 
@@ -266,7 +266,7 @@ int run_process_manager_child(ProcessManager *process_manager)
                 pid_t price_pid = ProcessManager_SpawnByExecutable(process_manager, "Fetcher", fetcher_exec_path, args, true);
                 if (price_pid < 0)
                 {
-                    LOG_WRITE(&process_manager_logger, "Failed to spawn fetcher process");
+                    LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_ERROR, "Failed to spawn fetcher process");
                     return -1;
                 }
 
@@ -295,7 +295,7 @@ int run_process_manager_child(ProcessManager *process_manager)
 
     if (energy_advisor_pid < 0)
     {
-        LOG_WRITE(&process_manager_logger, "Failed to spawn Energy Advisor process");
+        LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_ERROR, "Failed to spawn Energy Advisor process");
         return -1;
     }
 
@@ -335,10 +335,10 @@ int run_process_manager_child(ProcessManager *process_manager)
             if (bytes_read > 0)
             {
                 buffer[bytes_read] = '\0';
-                //LOG_WRITE(&process_manager_logger, "Output from fetcher process: %s", buffer);
+                //LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Output from fetcher process: %s", buffer);
                 if (strcmp(buffer, "NEW_DATA") == 0) // Example message from fetcher indicating new data is available
                 {
-                    //LOG_WRITE(&process_manager_logger, "Received NEW_DATA from fetcher process");
+                    //LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Received NEW_DATA from fetcher process");
                     ProcessManager_WriteToChild(process_manager, pid, "ACK", 4);
                 }
             }
@@ -346,11 +346,11 @@ int run_process_manager_child(ProcessManager *process_manager)
         nanosleep(&ts, NULL);
     }
 
-    LOG_WRITE(&process_manager_logger, "Process Manager starting shutdown...");
+    LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Process Manager starting shutdown...");
     ProcessManager_TerminateAll(process_manager);
 
     // Wait for all child processes to terminate
-    LOG_WRITE(&process_manager_logger, "Waiting for child processes to exit...");
+    LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Waiting for child processes to exit...");
     int status;
     while (wait(&status) > 0)
     {
@@ -358,7 +358,7 @@ int run_process_manager_child(ProcessManager *process_manager)
     }
     Config_Instance_Dispose();
     ProcessManager_Destroy(process_manager);
-    LOG_WRITE(&process_manager_logger, "%s", "Process Manager shutting down.");
+    LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Process Manager shutting down.");
     Logger_Dispose(&process_manager_logger);
     return 0;
 }

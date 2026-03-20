@@ -153,7 +153,7 @@ Quarter_Score *Energy_Run_Analysis(OpenMeteo_Data *weather, Spotprice_Data *pric
     Quarter_Score *analysis = calloc(count, sizeof(Quarter_Score));
     if (!analysis)
     {
-        LOG_WRITE(&energy_analysis_log, "Analysis data is missing");
+        LOG_WRITE(&energy_analysis_log, LOGGER_LEVEL_ERROR, "Analysis data is missing");
         return NULL;
     }
 
@@ -161,7 +161,7 @@ Quarter_Score *Energy_Run_Analysis(OpenMeteo_Data *weather, Spotprice_Data *pric
     if (!price_buffer)
     {
         free(analysis);
-        LOG_WRITE(&energy_analysis_log, "Price buffer is empty");
+        LOG_WRITE(&energy_analysis_log, LOGGER_LEVEL_ERROR, "Price buffer is empty");
         return NULL;
     }
 
