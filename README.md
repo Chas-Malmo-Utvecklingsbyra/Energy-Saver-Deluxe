@@ -26,7 +26,7 @@
 * Linux (Ubuntu)
 * gcc
 * curl
-* premake
+* premake (can be installed using ./install_premake.sh)
 * make
 * cJSON (included in include/core/json/)
 
