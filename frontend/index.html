@@ -140,6 +140,22 @@ function createTroll(){
         troll.src = "https://cdn3.emoji.gg/emojis/6757_Sadge.png";
     });
 
+    const getWeather = document.querySelector(".get-weather");
+    getWeather.addEventListener("mouseenter", () => {
+        troll.src = "https://cdn3.emoji.gg/emojis/1636-happy-pepe.png";
+    });
+    getWeather.addEventListener("mouseleave", () => {
+        troll.src = "https://cdn3.emoji.gg/emojis/6757_Sadge.png";
+    });
+
+    const getSummary = document.querySelector(".get-summary");
+    getSummary.addEventListener("mouseenter", () => {
+        troll.src = "https://cdn3.emoji.gg/emojis/1636-happy-pepe.png";
+    });
+    getSummary.addEventListener("mouseleave", () => {
+        troll.src = "https://cdn3.emoji.gg/emojis/6757_Sadge.png";
+    });
+
     document.body.appendChild(troll);
     setTimeout(() => { troll.remove(); }, 6000);
 }

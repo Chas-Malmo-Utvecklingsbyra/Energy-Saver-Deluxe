@@ -46,7 +46,6 @@ int http_server_process(void *context)
     (void)context;
 
     Logger logger = {0};
-    // Logger_Init(&logger, "HTTP-Server", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE);
     Logger_Init(&logger, "HTTP-Server", "logfolder", "log.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT);
 
     setup_http_server_signals();
@@ -65,8 +64,7 @@ int http_server_process(void *context)
     HTTP_Server_Register_Route(&http_server, "/advice", HTTP_METHOD_GET, advice_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/weather", HTTP_METHOD_GET, weather_handler_handle, NULL);
     HTTP_Server_Register_Route(&http_server, "/summary", HTTP_METHOD_GET, summary_handler_handle, NULL);
-    HTTP_Server_Register_Route(&http_server, "/summary.html", HTTP_METHOD_GET, summary_page_handler_handle, NULL);
-    
+    HTTP_Server_Register_Route(&http_server, "/summary.html", HTTP_METHOD_GET, summary_page_handler_handle, NULL);    
     
     Config_t *cfg =  Config_Get_Instance(NULL);
     uint16_t port = (uint16_t)Config_Get_Field_Value_Integer(cfg, "http_server_port", NULL);
@@ -94,14 +92,14 @@ int http_server_process(void *context)
 
 int energy_advisor_run(void *context)
 {
-    (void)context;
+    Logger *logger = (Logger*)context;
     bool file_missing = false;
 
     for (int i = 0; i < 4; i++)
     {
         if (!File_Helper_File_Exists(zones[i].price_file))
         {
-            printf("Price file is missing for zone: %s!\n", zones[i].zone);
+            LOG_WRITE(logger, LOGGER_LEVEL_WARNING, "Price file is missing for zone: %s!\n", zones[i].zone);
             file_missing = true;
         }
     }
@@ -110,24 +108,22 @@ int energy_advisor_run(void *context)
     {
         if (!File_Helper_File_Exists(zones[i].weather_file))
         {
-            printf("Weather file is missing for zone: %s!\n", zones[i].zone);
+            LOG_WRITE(logger, LOGGER_LEVEL_WARNING, "Weather file is missing for zone: %s!\n", zones[i].zone);
             file_missing = true;
         }
     }
 
     if (file_missing == false)
     {
-        printf("First and second file exists. Running advice...\n");
         Energy_Status status = Energy_Advisor_Advice();
         if (status != ENERGY_STATUS_OK)
         {
-            printf("Energy Advice data is missing, error code: %d\n", status);
+            LOG_WRITE(logger, LOGGER_LEVEL_ERROR, "Energy Advice data is missing, error code: %d\n", status);
             return -1;
         }
     }
     else
     {
-        printf("Files missing, returning to base...\n");
         return -1;
     }
 
@@ -266,7 +262,7 @@ int run_process_manager_child(ProcessManager *process_manager)
         
         if (newData == true)
         {
-            energy_advisor_run(NULL);
+            energy_advisor_run(&process_manager_logger);
             newData = false;
         }
 
