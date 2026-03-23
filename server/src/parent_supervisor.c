@@ -37,7 +37,7 @@ int run_parent_loop(pid_t process_manager_pid)
         }
     }
     
-    LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Goodbye, process done.\n");
+    LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Goodbye, process done");
     Logger_Dispose(&logger);
 
     return 0;
