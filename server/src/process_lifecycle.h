@@ -15,7 +15,7 @@ int http_server_process(void *context);
  * @param context Context pointer (currently unused)
  * @return Exit code (0 on success, negative on error)
  */
-int energy_advisor_process(void *context);
+int energy_advisor_run(void *context);
 
 /**
  * @brief Process Manager child process entry point

@@ -2,6 +2,7 @@
 
 #include "signal_handlers.h"
 #include <string.h>
+#include <stdio.h>
 #include <stddef.h>
 
 // Global quit flags for each process type
@@ -39,13 +40,6 @@ static void install_signal_handler(int signal, void (*handler)(int))
 void setup_http_server_signals(void)
 {
     active_quit_flag = &http_server_should_quit;
-    install_signal_handler(SIGQUIT, generic_quit_handler);
-    install_signal_handler(SIGTERM, generic_quit_handler);
-}
-
-void setup_energy_advisor_signals(void)
-{
-    active_quit_flag = &energy_advisor_should_quit;
     install_signal_handler(SIGQUIT, generic_quit_handler);
     install_signal_handler(SIGTERM, generic_quit_handler);
 }

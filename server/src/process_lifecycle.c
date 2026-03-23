@@ -25,7 +25,6 @@
 
 #define MINUTES_TO_SECONDS(x) (x*60)
 
-
 /**
  * @brief Helper function to check if a given date string (YYYY-MM-DD) matches today's date.
  * @param logger Pointer to a Logger instance for logging.
@@ -93,112 +92,43 @@ int http_server_process(void *context)
     return 0;
 }
 
-int energy_advisor_process(void *context)
+int energy_advisor_run(void *context)
 {
     (void)context;
+    bool file_missing = false;
 
-    setup_energy_advisor_signals();
-
-    Config_t *cfg = Config_Get_Instance(NULL);
-
-    size_t fetcher_command_count = Config_Get_Field_Value_Integer(cfg, "fetchers_commands_count", NULL);
-    char **args = NULL;
-
-    bool first_file_exists = false;
-    bool second_file_exists = false;
-
-    sleep(15);
-
-    while (energy_advisor_should_quit == 0)
+    for (int i = 0; i < 4; i++)
     {
-        for (size_t i = 0; i < fetcher_command_count; i++)
+        if (!File_Helper_File_Exists(zones[i].price_file))
         {
-            char *directory = NULL;
-            char *filename = NULL;
-            const char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
-            parse_command_args(cmd_args_string, &args);
-
-            for (int j = 0; args[j]; j++)
-            {
-                if (strcmp(args[j], "-o") == 0 && args[j + 1])
-                {
-                    directory = args[j + 1];
-                }
-
-                if (strcmp(args[j], "-n") == 0 && args[j + 1])
-                {
-                    filename = args[j + 1];
-                }
-            }
-
-            if (directory != NULL && filename != NULL)
-            {
-                char full_path[128];
-                snprintf(full_path, sizeof(full_path), "%s/%s", directory, filename);
-
-                if (File_Helper_File_Exists(full_path))
-                {
-                    if (i == 0)
-                    {
-                        first_file_exists = true;
-                    }
-                    else
-                    {
-                        second_file_exists = true;
-                    }
-                }
-            }
-
-            if (args != NULL)
-                free_args(args);
+            printf("Price file is missing for zone: %s!\n", zones[i].zone);
+            file_missing = true;
         }
+    }
 
-        if (first_file_exists == true && second_file_exists == true)
+    for (int i = 0; i < 4; i++)
+    {
+        if (!File_Helper_File_Exists(zones[i].weather_file))
         {
-            Energy_Status status = Energy_Advisor_Advice();
-            if (status != ENERGY_STATUS_OK)
-            {
-                printf("Energy Advice data is missing, error code: %d\n", status);
-                return -1;
-            }
+            printf("Weather file is missing for zone: %s!\n", zones[i].zone);
+            file_missing = true;
         }
+    }
 
-        first_file_exists = false;
-        second_file_exists = false;
-
-        time_t current_time = time(NULL);
-        struct tm *tm_info = localtime(&current_time);
-
-        int minutes = tm_info->tm_min;
-        int seconds_to_sleep = 0;
-        int minutes_in_seconds = MINUTES_TO_SECONDS(minutes);
-
-        if (minutes == 0 || minutes == 15 || minutes == 30 || minutes == 45)
+    if (file_missing == false)
+    {
+        printf("First and second file exists. Running advice...\n");
+        Energy_Status status = Energy_Advisor_Advice();
+        if (status != ENERGY_STATUS_OK)
         {
-            sleep(60);
-            break;
+            printf("Energy Advice data is missing, error code: %d\n", status);
+            return -1;
         }
-
-        if (minutes > 0 && minutes < 15)
-        {
-            seconds_to_sleep = MINUTES_TO_SECONDS(16) - minutes_in_seconds;
-        }
-        else if (minutes > 15 && minutes < 30)
-        {
-            seconds_to_sleep = MINUTES_TO_SECONDS(31) - minutes_in_seconds;
-        }
-        else if (minutes > 30 && minutes < 45)
-        {
-            seconds_to_sleep = MINUTES_TO_SECONDS(46) - minutes_in_seconds;
-        }
-        else if (minutes > 45 && minutes <= 59)
-        {
-            seconds_to_sleep = MINUTES_TO_SECONDS(61) - minutes_in_seconds;
-        }
-        
-        printf("Seconds to sleep [ADVICE]: %d\r\n", seconds_to_sleep);
-
-        sleep(seconds_to_sleep);
+    }
+    else
+    {
+        printf("Files missing, returning to base...\n");
+        return -1;
     }
 
     return 0;
@@ -209,7 +139,6 @@ int run_process_manager_child(ProcessManager *process_manager)
     setup_process_manager_signals();
 
     Logger process_manager_logger = {0};
-    // if (Logger_Init(&process_manager_logger, "Process Manager", NULL, NULL, LOGGER_OUTPUT_TYPE_CONSOLE) != LOGGER_RESULT_OK)
     if (Logger_Init(&process_manager_logger, "Process Manager", "logfolder", "log.txt", LOGGER_OUTPUT_TYPE_FILE_TEXT) != LOGGER_RESULT_OK)
     {
         printf("Failed to initialize logger for Process Manager\n");
@@ -246,8 +175,7 @@ int run_process_manager_child(ProcessManager *process_manager)
     pid_t elprisetjustnu_pid = -1;
     char **args = NULL;
     char date_str[16]; /* Fetcher date for checking if date has changed */
-
-    const char *zones[] = { "SE1", "SE2", "SE3", "SE4" };
+    
     const size_t zone_count = 4;
 
     for (size_t i = 0; i < fetcher_command_count; i++)
@@ -261,7 +189,7 @@ int run_process_manager_child(ProcessManager *process_manager)
             {
                 parse_command_args(cmd_args_string, &args);
 
-                update_fetcher_args_date(args, date_str, zones[z]);
+                update_fetcher_args_date(args, date_str, zones[z].zone);
 
                 pid_t price_pid = ProcessManager_SpawnByExecutable(process_manager, "Fetcher", fetcher_exec_path, args, true);
                 if (price_pid < 0)
@@ -291,14 +219,6 @@ int run_process_manager_child(ProcessManager *process_manager)
         }
     }
 
-    pid_t energy_advisor_pid = ProcessManager_Spawn(process_manager, "Energy Advisor", energy_advisor_process, NULL, false);
-
-    if (energy_advisor_pid < 0)
-    {
-        LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_ERROR, "Failed to spawn Energy Advisor process");
-        return -1;
-    }
-
     struct timespec ts;
     ts.tv_sec = 1;
     ts.tv_nsec = 0;
@@ -306,6 +226,7 @@ int run_process_manager_child(ProcessManager *process_manager)
     // Wait for child processes to finish or termination signal
     while (process_manager_should_quit == 0)
     {
+        bool newData = false;
         for (size_t fetcher_index = 0; fetcher_index < fetcher_pid_count; fetcher_index++)
         {
             pid_t pid = fetcher_pid[fetcher_index];
@@ -320,7 +241,7 @@ int run_process_manager_child(ProcessManager *process_manager)
                     {
                         char *cmd_args_string = Config_Get_Field_Value_From_String_Array(cfg, "fetchers_commands_args", i);
                         parse_command_args(cmd_args_string, &args);
-                        update_fetcher_args_date(args, date_str, zones[zone_count]);
+                        update_fetcher_args_date(args, date_str, zones[zone_count].zone);
                         
                         fetcher_pid[fetcher_index] = ProcessManager_ResstartProcess(process_manager, elprisetjustnu_pid, "Fetcher", fetcher_exec_path, args, true);
                         elprisetjustnu_pid = fetcher_pid[fetcher_index];
@@ -335,14 +256,20 @@ int run_process_manager_child(ProcessManager *process_manager)
             if (bytes_read > 0)
             {
                 buffer[bytes_read] = '\0';
-                //LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Output from fetcher process: %s", buffer);
-                if (strcmp(buffer, "NEW_DATA") == 0) // Example message from fetcher indicating new data is available
+                if (strcmp(buffer, "NEW_DATA") == 0) // New data from child process
                 {
-                    //LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Received NEW_DATA from fetcher process");
                     ProcessManager_WriteToChild(process_manager, pid, "ACK", 4);
+                    newData = true;
                 }
             }
         }
+        
+        if (newData == true)
+        {
+            energy_advisor_run(NULL);
+            newData = false;
+        }
+
         nanosleep(&ts, NULL);
     }
 
