@@ -30,5 +30,8 @@ HTTP_Status_Code summary_handler_handle(QueryParameters_t *params, Route_Handler
 
     Http_Router_Set_Response(response, HTTP_STATUS_CODE_OK, HTTP_CONTENT_TYPE_HTML, response_data, false);
 
+    free(response_data);
+    response_data = NULL;
+
     return response->status_code;
 }

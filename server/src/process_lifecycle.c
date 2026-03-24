@@ -279,6 +279,7 @@ int run_process_manager_child(ProcessManager *process_manager)
     {
         // Reap all child processes
     }
+
     Config_Instance_Dispose();
     ProcessManager_Destroy(process_manager);
     LOG_WRITE(&process_manager_logger, LOGGER_LEVEL_INFO, "Process Manager shutting down.");
