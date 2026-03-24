@@ -262,9 +262,14 @@ void write_advice_report_header(const char *path, const char *filename, const st
                                             date->tm_year + 1900, date->tm_mon + 1, date->tm_mday, low_price , high_price);
 }
 
-Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
+bool calculate_summary(Quarter_Score *analysis, int count, Energy_Summary *out_summary)
 {
+    if (!analysis || !out_summary || count <= 0)
+        return false;
+
     float *scores = malloc(sizeof(float) * count);
+    if (!scores)
+        return false;
 
     for (int i = 0; i < count; i++)
     {
@@ -303,7 +308,9 @@ Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
 
     free(scores);
 
-    return summary;
+    *out_summary = summary;
+
+    return true;
 }
 
 void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, Energy_Summary *summary)

@@ -61,7 +61,13 @@ Energy_Status Energy_Advisor_Advice()
             continue;
         }
 
-        Energy_Summary summary = calculate_summary(analysis, count);
+        Energy_Summary summary;
+        if (!calculate_summary(analysis, count, &summary))
+        {
+            LOG_WRITE(&energy_advisor_log, LOGGER_LEVEL_ERROR, "Summary calculation failed (zone: %s)", zones[z].zone);
+            free(analysis);
+            continue;
+        }
         
         char filename[64];
         snprintf(filename, sizeof(filename), "Energy_Advice_%s_%04d-%02d-%02d.txt", zones[z].zone, tomorrow.tm_year + 1900, tomorrow.tm_mon + 1, tomorrow.tm_mday);

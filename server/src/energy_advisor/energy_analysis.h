@@ -138,18 +138,25 @@ void write_advice_report_header(const char *path, const char *filename, const st
  * 
  * The summary identifies the optimal time windows for:
  * 
- * - Charging the battery
+ * - Charging the battery from grid
+ * - Charging the battery from source (solar panels)
  * - Consuming solar production
  * - Selling electricity
  * 
- * Window detection uses scoring functions and configurable thresholds.
+ * For each action:
+ * - A score is computed per quarter
+ * - Scores are sorted
+ * - A threshold is selected at the 75th percentile
+ * - The best continuous time window above the threshold is identified
  * 
- * @param analysis Quarter-level analysis results.
- * @param count Number of quarters.
+ * @param analysis Pointer to an array of quarter-level analysis results.
+ * @param count Number of elements in the analysis array. Must be > 0
+ * @param out_summary Pointer to a result structure that will be populated on success.
  * 
- * @return Energy_Summary containing the optimal windows.
+ * @return true if the summary was successfully calculated 
+ * @return false if input is invalid or memory allocation fails.
  */
-Energy_Summary calculate_summary(Quarter_Score *analysis, int count);
+bool calculate_summary(Quarter_Score *analysis, int count, Energy_Summary *out_summary);
 
 void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, Energy_Summary *summary);
 
