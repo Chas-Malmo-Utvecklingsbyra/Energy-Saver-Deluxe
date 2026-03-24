@@ -246,16 +246,20 @@ void write_advice_report(const char *path, const char *filename, const char *fmt
 
 void write_advice_report_header(const char *path, const char *filename, const struct tm *date, float low_price, float high_price)
 {
-    write_advice_report(path, filename, "\n============================================= ENERGY ADVICE FOR %04d-%02d-%02d ============================================\n\n"
+    write_advice_report(path, filename, "\n================================================== USER GUIDE: =============================================================\n"
                                             "How to handle this information:\n"
-                                            "The numbers in the table below are graded between 0 and 1, and will help you to evaluate your choices with more care.\n"
-                                            "If the number is 1 or close to = A strong recommendation as this field is optimal for this quarter.\n"
-                                            "If the number is 0 or close to = A recommendation to AVOID these actions during this time as they are in the low range.\n"
+                                            "-------------------------------\n"
+                                            "The numbers in the table below are graded between 0 and 1, and will help you to evaluate your choices with more care.\n\n"
                                             "Norm is the normalized price info - where 1 indicates that this is a high price compared to the rest of the day.\n\n"
+                                            "In the cases regarding Charge, Consume and Sell the numbers should be read according to this information:\n"
+                                            "---------------------------------------------------------------------------------------------------------\n"
+                                            "If the number is 1 or close to = A strong recommendation as this field is optimal for this quarter.\n"
+                                            "If the number is 0 or close to = A recommendation to AVOID these actions during this time as they are in the low range.\n\n"
                                             "A gentle reminder that all of these values are only a recommendation based on the information gathered, not a definitive result.\n\n"
+                                            "============================================= ENERGY ADVICE FOR %04d-%02d-%02d ============================================\n\n"
                                             "========================================== Low price threshold: %.3f SEK/kWh =========================================\n"
                                             "========================================== High price threshold: %.3f SEK/kWh ========================================\n\n",
-                                            date->tm_year + 1900, date->tm_mon + 1, date->tm_mday + 1, low_price , high_price);
+                                            date->tm_year + 1900, date->tm_mon + 1, date->tm_mday, low_price , high_price);
 }
 
 Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
@@ -264,10 +268,17 @@ Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
 
     for (int i = 0; i < count; i++)
     {
-        scores[i] = score_charge(&analysis[i]);
+        scores[i] = score_charge_from_grid(&analysis[i]);
     }
     radix_sort_float(scores, count);
-    float charge_threshold = scores[(int)((count - 1) * 0.75f)];
+    float charge_from_grid_threshold = scores[(int)((count - 1) * 0.75f)];
+    
+    for (int i = 0; i < count; i++)
+    {
+        scores[i] = score_charge_from_source(&analysis[i]);
+    }
+    radix_sort_float(scores, count);
+    float charge_from_source_threshold = scores[(int)((count - 1) * 0.75f)];
     
     for (int i = 0; i < count; i++)
     {
@@ -285,7 +296,8 @@ Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
     
     Energy_Summary summary;
     
-    summary.charge = find_best_window(analysis, count, score_charge, charge_threshold);
+    summary.charge_from_grid = find_best_window(analysis, count, score_charge_from_grid, charge_from_grid_threshold);
+    summary.charge_from_source = find_best_window(analysis, count, score_charge_from_source, charge_from_source_threshold);
     summary.consume = find_best_window(analysis, count, score_consume, consume_threshold);
     summary.sell = find_best_window(analysis, count, score_sell, sell_threshold);
 
@@ -296,24 +308,39 @@ Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
 
 void write_advice_report_summary(const char *path, const char *filename, Quarter_Score *analysis, Energy_Summary *summary)
 {
-    Best_Time_Window best_charge = summary->charge;       
+    Best_Time_Window best_charge_from_grid = summary->charge_from_grid;       
+    Best_Time_Window best_charge_from_source = summary->charge_from_source;       
     Best_Time_Window best_consume = summary->consume;
     Best_Time_Window best_sell = summary->sell;
 
     write_advice_report(path, filename, "\n====================== SUMMARY FOR THE DAY ======================\n\n");
 
-    if (best_charge.start != -1)
+    if (best_charge_from_grid.start != -1)
     {
         write_advice_report(path, filename, "The best time to CHARGE from grid: %02d:%02d - %02d:%02d (avg %.2f)\n",
-        analysis[best_charge.start].time.tm_hour,
-        analysis[best_charge.start].time.tm_min,
-        analysis[best_charge.end].time.tm_hour,
-        analysis[best_charge.end].time.tm_min,
-        best_charge.average_score);
+        analysis[best_charge_from_grid.start].time.tm_hour,
+        analysis[best_charge_from_grid.start].time.tm_min,
+        analysis[best_charge_from_grid.end].time.tm_hour,
+        analysis[best_charge_from_grid.end].time.tm_min,
+        best_charge_from_grid.average_score);
     }
     else
     {
         write_advice_report(path, filename, "The best time to CHARGE from grid: There is no window that fulfills the requirements today\n");
+    }
+
+    if (best_charge_from_source.start != -1)
+    {
+        write_advice_report(path, filename, "The best time to CHARGE from source: %02d:%02d - %02d:%02d (avg %.2f)\n",
+        analysis[best_charge_from_source.start].time.tm_hour,
+        analysis[best_charge_from_source.start].time.tm_min,
+        analysis[best_charge_from_source.end].time.tm_hour,
+        analysis[best_charge_from_source.end].time.tm_min,
+        best_charge_from_source.average_score);
+    }
+    else
+    {
+        write_advice_report(path, filename, "The best time to CHARGE from source: There is no window that fulfills the requirements today\n");
     }
 
     if (best_consume.start != -1)
@@ -381,26 +408,42 @@ void write_advice_report_remaining(const char *path, const char *filename, Quart
 
 void Energy_Write_JSON_Report(const char *path, const char *filename, Quarter_Score *analysis, const struct tm *date, Energy_Summary *summary, int count)
 {
-    char buf[1024];
+    char buf[2056];
     File_Helper_Write(path, filename, "{\n", 2, FILE_HELPER_MODE_WRITE, true);
 
-    char charge_buf[256];
+    char charge_grid_buf[256];
+    char charge_source_buf[256];
     char consume_buf[256];
     char sell_buf[256];
 
-    if (!summary->charge.found || summary->charge.start >= count || summary->charge.end >= count)
+    if (!summary->charge_from_grid.found || summary->charge_from_grid.start >= count || summary->charge_from_grid.end >= count)
     {
-        snprintf(charge_buf, sizeof(charge_buf), "\"charge\": { \"found\": false }");
+        snprintf(charge_grid_buf, sizeof(charge_grid_buf), "\"charge from grid\": { \"found\": false }");
     }
     else
     {
-        snprintf(charge_buf, sizeof(charge_buf), 
-            "\"charge\": { \"found\": true, \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f }", 
-            analysis[summary->charge.start].time.tm_hour,
-            analysis[summary->charge.start].time.tm_min,
-            analysis[summary->charge.end].time.tm_hour,
-            analysis[summary->charge.end].time.tm_min,
-            summary->charge.average_score);
+        snprintf(charge_grid_buf, sizeof(charge_grid_buf), 
+            "\"charge from grid\": { \"found\": true, \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f }", 
+            analysis[summary->charge_from_grid.start].time.tm_hour,
+            analysis[summary->charge_from_grid.start].time.tm_min,
+            analysis[summary->charge_from_grid.end].time.tm_hour,
+            analysis[summary->charge_from_grid.end].time.tm_min,
+            summary->charge_from_grid.average_score);
+    }
+
+    if (!summary->charge_from_source.found || summary->charge_from_source.start >= count || summary->charge_from_source.end >= count)
+    {
+        snprintf(charge_source_buf, sizeof(charge_source_buf), "\"charge from source\": { \"found\": false }");
+    }
+    else
+    {
+        snprintf(charge_source_buf, sizeof(charge_source_buf), 
+            "\"charge from source\": { \"found\": true, \"start\": \"%02d:%02d\", \"end\": \"%02d:%02d\", \"avg\": %.2f }", 
+            analysis[summary->charge_from_source.start].time.tm_hour,
+            analysis[summary->charge_from_source.start].time.tm_min,
+            analysis[summary->charge_from_source.end].time.tm_hour,
+            analysis[summary->charge_from_source.end].time.tm_min,
+            summary->charge_from_source.average_score);
     }
 
     if (!summary->consume.found || summary->consume.start >= count || summary->consume.end >= count)
@@ -439,10 +482,11 @@ void Energy_Write_JSON_Report(const char *path, const char *filename, Quarter_Sc
         "  \"summary\": {\n"
         "    %s,\n"
         "    %s,\n"
+        "    %s,\n"
         "    %s\n"
         "  },\n"
         "  \"quarters\": [\n", 
-        date->tm_year + 1900, date->tm_mon + 1, date->tm_mday, charge_buf, consume_buf, sell_buf
+        date->tm_year + 1900, date->tm_mon + 1, date->tm_mday, charge_grid_buf, charge_source_buf, consume_buf, sell_buf
     );
 
     File_Helper_Write(path, filename, buf, strlen(buf), FILE_HELPER_MODE_APPEND, false);

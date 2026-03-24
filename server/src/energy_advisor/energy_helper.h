@@ -48,7 +48,9 @@ int compare_price(const void *a, const void *b);
  */
 float normalize_price(float price, float low, float high);
 
-float score_charge(const Quarter_Score *q);
+float score_charge_from_grid(const Quarter_Score *q);
+
+float score_charge_from_source(const Quarter_Score *q);
 
 float score_sell(const Quarter_Score *q);
 

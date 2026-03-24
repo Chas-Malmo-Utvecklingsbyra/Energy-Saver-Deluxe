@@ -49,7 +49,8 @@ typedef struct
 
 typedef struct
 {
-    Best_Time_Window charge;
+    Best_Time_Window charge_from_grid;
+    Best_Time_Window charge_from_source;
     Best_Time_Window consume;
     Best_Time_Window sell;
 } Energy_Summary;

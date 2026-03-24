@@ -31,9 +31,14 @@ float normalize_price(float price, float low, float high)
     return (price - low) / (high - low);
 }
 
-float score_charge(const Quarter_Score *q)
+float score_charge_from_grid(const Quarter_Score *q)
 {
     return q->advice.charge_from_grid;
+}
+
+float score_charge_from_source(const Quarter_Score *q)
+{
+    return q->advice.charge_from_source;
 }
 
 float score_sell(const Quarter_Score *q)
