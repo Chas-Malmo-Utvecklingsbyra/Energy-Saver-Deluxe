@@ -250,7 +250,8 @@ void write_advice_report_header(const char *path, const char *filename, const st
                                             "How to handle this information:\n"
                                             "The numbers in the table below are graded between 0 and 1, and will help you to evaluate your choices with more care.\n"
                                             "If the number is 1 or close to = A strong recommendation as this field is optimal for this quarter.\n"
-                                            "If the number is 0 or close to = A recommendation to AVOID these actions during this time as they are in the low range.\n\n"
+                                            "If the number is 0 or close to = A recommendation to AVOID these actions during this time as they are in the low range.\n"
+                                            "Norm is the normalized price info - where 1 indicates that this is a high price compared to the rest of the day.\n\n"
                                             "A gentle reminder that all of these values are only a recommendation based on the information gathered, not a definitive result.\n\n"
                                             "========================================== Low price threshold: %.3f SEK/kWh =========================================\n"
                                             "========================================== High price threshold: %.3f SEK/kWh ========================================\n\n",
