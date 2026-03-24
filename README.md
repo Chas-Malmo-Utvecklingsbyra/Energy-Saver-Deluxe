@@ -31,7 +31,7 @@
 
 ## How to use
 * 1) `Clone the repository:` 
-   `git clone https://github.com/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe.git`
+   `git clone --recurse-submodules https://github.com/Chas-Malmo-Utvecklingsbyra/Energy-Saver-Deluxe.git`
 * 2) `Install the prerequisites:`
    `'premake5 install' in the terminal in the root folder`
 * 3) `Starting the server:`
@@ -111,7 +111,8 @@
 * `A functional client application implemented in C++ with RAII.`
     * `A feature that gets the prognosis report in the terminal`
     * `A feature that gets the spot price-data for the coming day`
-    * `A feature that gets the summarized information regarding the best time windows for the upcoming day` 
+    * `A feature that gets the summarized information regarding the best time windows for the upcoming day`
+    * `A feature that u can speak to a chat bot that only answers to Energy related questions.` 
 * `Documentation:`
     * `The systems architecture.`
     * `User instructions.`
