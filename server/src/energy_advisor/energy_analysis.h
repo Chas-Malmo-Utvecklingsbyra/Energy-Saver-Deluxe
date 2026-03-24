@@ -34,23 +34,47 @@
  * @brief Computes energy flow recommendations for a single time slot.
  * 
  * This function produces normalized recommendation scores (0..1)
- * for how energy should flow within the system during a specific quarter.
+ * for how energy should flow within the system during a specific quarter of an hour.
  * 
  * The recommendations are based on three normalized inputs:
  * 
- * - electricity price
- * - solar production potential
- * - battery state of charge
+ * - electricity price (price_norm)
+ * - solar production potential (production)
+ * - battery state of charge (battery_soc)
  * 
- * Higher scores indicate stronger recommendations for that action.
+ * The scoring model combines these factors multiplicateively to express
+ * implicit "AND" conditions (for example: cheap price AND low production AND empty battery)
+ * 
+ * Certain action groups are internally normalized to introduce competition:
+ * * Grid actions:
+ * charge_from_grid vs consume_from_grid
+ * 
+ * * Battery actions:
+ * consume_from_battery vs sell_from_battery
+ * 
+ * Within each group, scores are normalized so that they form a proportional distribution
+ * rather than independent signals. This avoids conflicting recommandations and forces relative
+ * prioritization.
+ * 
+ * A bias factor (sell_bias) is applied to battery selling to favor exporting energy over internal
+ * consumption when conditions are otherwise equal.
+ * 
+ * Source-based actions (solar) are evaluated independently and are not part of a normalized competition group.
+ * 
+ * All outputs are clamped to the range [0, 1]
  * 
  * @param price_norm Normalized electricity price (0 = cheap, 1 = expensive)
  * @param production Normalized solar production potential (0..1)
  * @param battery_soc Battery state-of-charge (0..1)
  * 
  * @return Energy_Flow_Advice containing recommendation scores.
+ * 
+ * @note The returned values are heuristic scores, not absolute decisions.
+ * 
+ * A higher score indicates a stronger recommendation relative to other actions
+ * in the same category.
  */
-Energy_Flow_Advice compute_advice(float price_norm, float production, float battery_soc);
+Energy_Flow_Advice grading_actions(float price_norm, float production, float battery_soc);
 
 int Energy_Find_Weather_Start(OpenMeteo_Data *weather, const struct tm *date, int *out_count);
 

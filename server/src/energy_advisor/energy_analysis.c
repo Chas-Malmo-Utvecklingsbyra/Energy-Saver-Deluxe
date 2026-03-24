@@ -42,7 +42,7 @@
  * for each energy action.
  */
 
-Energy_Flow_Advice compute_advice(float price_norm, float production, float battery_soc)
+Energy_Flow_Advice grading_actions(float price_norm, float production, float battery_soc)
 {
     Energy_Flow_Advice advice = {0};
 
@@ -50,12 +50,23 @@ Energy_Flow_Advice compute_advice(float price_norm, float production, float batt
     float inv_prod = (1.0f - production);
     float inv_soc = (1.0f - battery_soc);
 
-    advice.charge_from_grid = clamp_value(inv_price * inv_prod * inv_soc);
+    // Makes the decision promote selling energy over consuming
+    float sell_bias = 1.2f;
+    
+    float grid_charge = inv_price * inv_soc;
+    float grid_consume = inv_price * inv_prod;
+    float grid_total = grid_charge + grid_consume + 1e-6f;
+
+    float bat_consume = battery_soc * price_norm;
+    float bat_sell = battery_soc * price_norm * sell_bias;
+    float bat_total = bat_consume + bat_sell + 1e-6f;
+    
+    advice.charge_from_grid = clamp_value(grid_charge / grid_total);
     advice.charge_from_source = clamp_value(production * inv_soc);
-    advice.consume_from_grid = clamp_value(inv_prod * inv_soc * inv_price);
+    advice.consume_from_grid = clamp_value(grid_consume / grid_total);
     advice.consume_from_source = clamp_value(production);
-    advice.consume_from_battery = clamp_value(battery_soc * price_norm);
-    advice.sell_from_battery = clamp_value(battery_soc * price_norm);    
+    advice.consume_from_battery = clamp_value(bat_consume / bat_total);
+    advice.sell_from_battery = clamp_value(bat_sell / bat_total);    
     advice.sell_from_source = clamp_value(production * price_norm * battery_soc);
 
     return advice;
@@ -201,7 +212,7 @@ Quarter_Score *Energy_Run_Analysis(OpenMeteo_Data *weather, Spotprice_Data *pric
 
         float battery_soc = 0.5f;
 
-        Energy_Flow_Advice advice = compute_advice(price_norm, sun_index, battery_soc);
+        Energy_Flow_Advice advice = grading_actions(price_norm, sun_index, battery_soc);
         analysis[i].time = price_quarter->time_start;
         analysis[i].price = price_quarter->SEK_per_kWh;
         analysis[i].price_norm = price_norm;
@@ -248,11 +259,36 @@ void write_advice_report_header(const char *path, const char *filename, const st
 
 Energy_Summary calculate_summary(Quarter_Score *analysis, int count)
 {
+    float *scores = malloc(sizeof(float) * count);
+
+    for (int i = 0; i < count; i++)
+    {
+        scores[i] = score_charge(&analysis[i]);
+    }
+    radix_sort_float(scores, count);
+    float charge_threshold = scores[(int)((count - 1) * 0.75f)];
+    
+    for (int i = 0; i < count; i++)
+    {
+        scores[i] = score_consume(&analysis[i]);
+    }
+    radix_sort_float(scores, count);
+    float consume_threshold = scores[(int)((count - 1) * 0.75f)];
+    
+    for (int i = 0; i < count; i++)
+    {
+        scores[i] = score_sell(&analysis[i]);
+    }
+    radix_sort_float(scores, count);
+    float sell_threshold = scores[(int)((count - 1) * 0.75f)];
+    
     Energy_Summary summary;
     
-    summary.charge = find_best_window(analysis, count, score_charge, 0.3f);         // Low threshold just to prove that it works
-    summary.consume = find_best_window(analysis, count, score_consume, 0.6f);       // Average threshold
-    summary.sell = find_best_window(analysis, count, score_sell, 0.6f);
+    summary.charge = find_best_window(analysis, count, score_charge, charge_threshold);
+    summary.consume = find_best_window(analysis, count, score_consume, consume_threshold);
+    summary.sell = find_best_window(analysis, count, score_sell, sell_threshold);
+
+    free(scores);
 
     return summary;
 }

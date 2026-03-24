@@ -92,7 +92,7 @@
         * `Charging is set to two types: Charge from grid and Charge from source.`
         * `Consuming has three types: Consume from grid, from source or from battery.`
         * `Selling is set to two different types: Sell from battery and from source.`
-    * `These grades are then evaluated against a user-defined time window and threshold.`
+    * `These grades are then evaluated against a user-defined time window and a dynamically-defined threshold.`
     * `The summary displays the days best window for the three actions.`
        * `Should there not be a suitable window during the day, the program will signal this by displaying a message explaining this.`
     * `Storing this information into a text-file and a JSON file and shared to our endpoints.`
