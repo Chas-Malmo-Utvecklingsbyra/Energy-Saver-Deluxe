@@ -86,7 +86,10 @@ int http_server_process(void *context)
     HTTP_Server_Dispose(&http_server);
 
     LOG_WRITE(&logger, LOGGER_LEVEL_INFO, "Disposing logger.");
+
     Logger_Dispose(&logger);
+    Config_Instance_Dispose();
+
     return 0;
 }
 
