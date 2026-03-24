@@ -95,7 +95,7 @@ newaction {
     execute = function ()
         os.execute("premake5 gmake")
         os.execute("make")
-        os.execute("valgrind --leak-check=yes ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME)
+        os.execute("valgrind --leak-check=full --show-leak-kinds=all -s ./" .. BUILD_DIR .. "bin/Debug/" .. CLIENT_OR_SERVER .. PROJECT_NAME)
     end
 }
 
