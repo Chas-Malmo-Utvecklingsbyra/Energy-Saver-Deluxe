@@ -161,14 +161,14 @@ Quarter_Score *Energy_Run_Analysis(OpenMeteo_Data *weather, Spotprice_Data *pric
     const char log_filename[] = "Energy_Analysis_Log.txt";
     Logger_Init(&energy_analysis_log, "ENERGY ANALYSIS", "logfolder", log_filename, LOGGER_OUTPUT_TYPE_FILE_TEXT);
 
-    Quarter_Score *analysis = calloc(count, sizeof(Quarter_Score));
+    Quarter_Score *analysis = malloc(count * sizeof(Quarter_Score));
     if (!analysis)
     {
         LOG_WRITE(&energy_analysis_log, LOGGER_LEVEL_ERROR, "Analysis data is missing");
         return NULL;
     }
 
-    float *price_buffer = malloc(sizeof(float) *count);
+    float *price_buffer = malloc(sizeof(float) * count);
     if (!price_buffer)
     {
         free(analysis);
