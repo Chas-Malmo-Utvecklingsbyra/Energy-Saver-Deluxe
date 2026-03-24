@@ -4,7 +4,7 @@
 
 Chatbot::Chatbot()
 {
-    is_online = Server_Info::IsServerOnline("http://free-virus.com:1234");
+    is_online = Server_Info::IsServerOnline("http://free-virus.com");
 
     if (is_online)
     {
